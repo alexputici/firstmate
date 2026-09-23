@@ -1,0 +1,11 @@
+== Live detection from inside a real Claude Code session (this validation run's own process tree) ==
+date: 2026-09-23T23:20:38Z
+
+-- real ancestor chain of this tool process (pid, comm), walked with ps:
+position 1  pid 31167  /bin/zsh
+position 2  pid 4306   claude
+position 3  pid 35322  /Users/kennedy/.local/bin/no-mistakes
+position 4  pid 1      /sbin/launchd
+
+-- bin/fm-harness.sh ancestry : comm claude
+-- bin/fm-harness.sh (detect) : claude

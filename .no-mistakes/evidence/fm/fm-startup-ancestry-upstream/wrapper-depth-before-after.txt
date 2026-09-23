@@ -1,0 +1,18 @@
+== Production-wrapper depth repro: real executable named 'codex' at ancestry position 9 (7 nested shells + nest leaf + detector) ==
+host: Darwin 25.6.0, bash 5.3.9(1)-release
+
+--- BASE ac2ed3b (8-position scan) ---
+position 9  ancestry        : 
+position 9  detect (no mark): unknown
+position 9  detect (CLAUDECODE=1 retained): claude
+position 16 ancestry        : 
+position 17 ancestry        : 
+position 17 detect (no mark): unknown
+
+--- FIXED a420a0a (16-position scan) ---
+position 9  ancestry        : comm codex
+position 9  detect (no mark): codex
+position 9  detect (CLAUDECODE=1 retained): codex
+position 16 ancestry        : comm codex
+position 17 ancestry        : 
+position 17 detect (no mark): unknown
