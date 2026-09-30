@@ -22,6 +22,8 @@
 #      supervision session, and hands to its successor as handling, but that
 #      turns main-only (a decision lands) before its turn starts, is handed
 #      back to main and delivered the same way, with no engine turn.
+# Also covers a failed latched-engine hand-back after its successor closes;
+# FM_SUPERVISION_HOST_FAILED_PROBE_CONTROL_REF selects its pre-fix control.
 # With FM_SUPERVISION_HOST_ATTENDED_LIVE_CONTROL_REF=<git ref>, the scenario
 # first runs on that ref's host as a negative control and must show the idle
 # primary NOT woken by the first event, so the scenario is proven able to catch
@@ -434,6 +436,70 @@ run_control() {
   stop_lab "$lab"
   pass "attended live control ($CLAUDE_VERSION): on $CONTROL_REF the idle primary is not woken, so the scenario catches the bug"
 }
+
+# Exercise a failed engine probe through a real interactive Claude primary.
+# Only the engine response is controlled: it waits for the successor's later
+# event, drains and acknowledges its grant, reports, then returns an incomplete
+# result. The primary, Stop registration, host, watcher and delivery are real.
+# A supplied control ref changes only the host, proving the same delivery path
+# loses the wake without the hand-back publication.
+run_failed_probe() {  # <name> [pre-fix host ref]
+  local lab ref=${2:-} event successor key
+  lab=$(make_lab "$1" "$ref")
+  cat > "$lab/engine-stub" <<'SH'
+#!/usr/bin/env bash
+: > "$FM_HOME/engine-waiting"
+read -r _ < "$FM_HOME/engine-release"
+drain=$("$FM_HOME/bin/fm-wake-drain.sh" 2>&1)
+printf '%s\n' "$drain" > "$FM_HOME/engine-drain"
+ack=$(printf '%s\n' "$drain" | sed -n 's/^WAKE_ACK_REQUIRED: after handling completes run bin\/fm-wake-drain.sh //p' | tail -1)
+"$FM_HOME/bin/fm-branch-report.sh" --task demo --verdict routine --summary 'lab engine reported before failing' >/dev/null
+# shellcheck disable=SC2086 # arguments emitted by the real drain
+[ -z "$ack" ] || "$FM_HOME/bin/fm-wake-drain.sh" $ack
+printf '{}\n'
+SH
+  chmod +x "$lab/engine-stub"
+  mkfifo "$lab/fm/engine-release"
+  printf "export FM_SUPERVISION_ENGINE_CLAUDE_BIN='%s'\n" "$lab/engine-stub" >> "$lab/env"
+  start_primary "$lab"
+  key=$(FM_HOME="$lab/fm" bash -c '
+    . "$1/bin/fm-wake-lib.sh"
+    . "$1/bin/fm-supervision-engine-lib.sh"
+    fm_supervision_host_main_key "$1/state"
+  ' _ "$lab/fm") || fail "failed probe: no main-session key"
+  printf 'key=%s|claude|sonnet\nerrors=3\ncooldown=600\nretry_after=1\n' "$key" > "$lab/fm/state/.supervision-host-health"
+  event=$(date +%s)
+  printf 'working [at=%s]: lab probe event\n' "$event" >> "$lab/fm/state/demo.status"
+  wait_until "$TURN_POLLS" test -e "$lab/fm/engine-waiting" || fail "failed probe: engine never started"$'\n'"$(diagnose "$lab")"
+  successor=$(watcher_pid "$lab")
+  fire "$lab" "$lab/fm/state/demo.status" lab-probe 'later event during the probe' >/dev/null
+  wait_until 300 bash -c '! kill -0 "$1" 2>/dev/null' _ "$successor" || fail "failed probe: successor did not close"
+  printf 'continue\n' > "$lab/fm/engine-release"
+  wait_until "$TURN_POLLS" host_log_since "$lab" "$event" $'\tto-main\t' >/dev/null || fail "failed probe: no hand-back"
+  grep -qx 'errors=4' "$lab/fm/state/.supervision-host-health" || fail "failed probe: did not count the engine error"
+  grep -qx 'cooldown=1200' "$lab/fm/state/.supervision-host-health" || fail "failed probe: did not double the cooldown"
+  if [ -n "$ref" ]; then
+    sleep "$CONTROL_QUIET_SECONDS"
+    ! rewoke_since "$lab" "$event" || fail "failed probe control: unexpectedly rewoke"
+    ! watcher_live "$lab" || fail "failed probe control: unexpectedly retained a watcher"
+    case "$(ledger "$lab")" in *' outcome=arming '*) ;; *) fail "failed probe control: expected unfinished claim" ;; esac
+    evidence "failed probe control ($ref): no rewake, no watcher, ledger outcome=arming after ${CONTROL_QUIET_SECONDS}s"
+  else
+    wait_until "$TURN_POLLS" rewoke_since "$lab" "$event" || fail "failed probe: no real Stop-hook feedback"$'\n'"$(diagnose "$lab")"
+    wait_until "$TURN_POLLS" acked_since "$lab" "$event" || fail "failed probe: main did not acknowledge the later event"
+    wait_until "$TURN_POLLS" host_log_since "$lab" "$event" $'\tstart\tgen=' >/dev/null || fail "failed probe: no next cycle"
+    wait_until 300 watcher_live "$lab" || fail "failed probe: next cycle has no watcher"
+    evidence "failed probe: Stop-hook feedback delivered; primary drained and acknowledged; next cycle has live watcher; errors=4 cooldown=1200"
+  fi
+  [ "$(captain_prompts "$lab")" = 1 ] || fail "failed probe: unexpected captain prompt"
+  stop_lab "$lab"
+  pass "attended failed probe live ($CLAUDE_VERSION): $1"
+}
+
+if [ -n "${FM_SUPERVISION_HOST_FAILED_PROBE_CONTROL_REF:-}" ]; then
+  run_failed_probe failed-probe-control "$FM_SUPERVISION_HOST_FAILED_PROBE_CONTROL_REF"
+fi
+run_failed_probe failed-probe
 
 if [ -n "$CONTROL_REF" ]; then
   run_control

@@ -6,6 +6,10 @@ This record contains reusable version-scoped evidence for active runtime guarant
 The backend guides own current setup, safety boundaries, and limitations.
 Exact task chronology, branch names, temporary homes, local paths, process ids, thread ids, and delivery transcripts remain in private reports or PR evidence.
 
+## Claude supervision-host hand-back
+
+The dated Claude Code 2.1.285 failed-probe delivery proof and its opt-in live command are recorded in [supervision verification](supervision.md#failed-attended-hand-back-after-a-successor-closes).
+
 ## Harness detection precedence
 
 Firstmate's own harness comes from two kinds of evidence, and `bin/fm-harness.sh` owns how they combine: an environment marker names its harness, and the nearest harness process in the parent chain proves who owns the process tree.

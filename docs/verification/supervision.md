@@ -647,6 +647,33 @@ tests/fm-watch-arm.test.sh
 ```
 
 
+### Failed attended hand-back after a successor closes
+
+Verified on 2026-09-30 with Claude Code 2.1.285, model `haiku`, on macOS, using isolated homes and private tmux sockets.
+The primary and its tracked Stop hooks are real; the engine is a controlled executable that waits for a later event to close the successor, drains and acknowledges its grant, reports, then returns an incomplete result.
+The session starts with an expired latch so that this failed probe records `errors=4` and `cooldown=1200`.
+No prompt is submitted after the initial setup prompt.
+
+```sh
+FM_SUPERVISION_HOST_ATTENDED_LIVE_E2E=1 \
+FM_SUPERVISION_HOST_FAILED_PROBE_CONTROL_REF=eb77f02b16aeca9533102070de34b1f8812f4fa2 \
+FM_SUPERVISION_HOST_ATTENDED_LIVE_CONTROL_SECONDS=15 \
+bash bin/fm-test-run.sh tests/fm-supervision-host-attended-live-e2e.test.sh
+```
+
+The same event sequence on that pre-fix host leaves the idle primary asleep; the corrected host delivers Stop-hook feedback and the primary's handling turn starts the next watcher cycle:
+
+```text
+# 06:09:15 failed probe control (eb77f02b16aeca9533102070de34b1f8812f4fa2): no rewake, no watcher, ledger outcome=arming after 15s
+ok - attended failed probe live (2.1.285 (Claude Code)): failed-probe-control
+# 06:09:52 failed probe: Stop-hook feedback delivered; primary drained and acknowledged; next cycle has live watcher; errors=4 cooldown=1200
+ok - attended failed probe live (2.1.285 (Claude Code)): failed-probe
+```
+
+`tests/fm-supervision-host.test.sh` pins the same ordering through the real scripts without an installed harness, including successful captain outcomes and failed downtime publication.
+The existing hand-back owner restores downtime before emitting its close; [supervision-host.md](../supervision-host.md#failure-direction) owns the behavior.
+This proof establishes Claude delivery for this ordering, not a guarantee against arbitrary process termination or loss of session ownership.
+
 ### Non-Pi primaries
 
 This supports the per-primary routing in [supervision-host.md](../supervision-host.md): with `config/supervision-host`, the Cursor, OpenCode, Grok, and Codex arm owners run the host with the Claude engine, and without it nothing changes.

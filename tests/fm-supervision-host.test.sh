@@ -50,6 +50,9 @@ FAKE_CLAUDE="$FAKEBIN/claude"
 #   held        handle, but first block reading the $FM_HOME/stub-release FIFO
 #               until the test writes to it, so the test chooses when the turn
 #               ends
+#   held-emptyresult / held-captain wait before draining until a successor has
+#               closed, then acknowledge and return an incomplete result or a
+#               captain outcome, respectively
 #   emptyresult the same as handle, but print {} as its result
 #   noreport    drain and exit cleanly without a report
 #   go-away     the captain goes away (the record is written) mid-turn, then
@@ -81,6 +84,13 @@ if [ "$mode" = hang ]; then
   sleep "$FM_TEST_STUB_MAX_BLOCK_SECONDS"
   exit 0
 fi
+case "$mode" in
+  held-emptyresult|held-captain)
+    : > "$FM_HOME/stub-waiting"
+    read -r _ < "$FM_HOME/stub-release"
+    mode=${mode#held-}
+    ;;
+esac
 drain=$("$FM_REPO/bin/fm-wake-drain.sh" 2>&1)
 printf '%s\n' "$drain" > "$FM_HOME/engine-drain.$n"
 ack=$(printf '%s\n' "$drain" | sed -n 's/^WAKE_ACK_REQUIRED: after handling completes run bin\/fm-wake-drain.sh //p' | tail -1)
@@ -127,6 +137,7 @@ case "$mode" in
     esac
     case "$mode" in return-fail|return-fail-silent) exit 3 ;; esac
     [ "$mode" != return-first ] || sleep "$FM_TEST_STUB_MAX_BLOCK_SECONDS"
+    : > "$FM_HOME/stub-finished"
     [ "$mode" != emptyresult ] || { printf '{}\n'; exit 0; }
     result
     ;;
@@ -1214,6 +1225,77 @@ test_claude_stop_hook_rewakes_a_present_captain_beside_a_quiet_record() {
   drained=$(main_drain "$home")
   assert_contains "$drained" " ago] demo: stub escalated: " "main's drain must present the captain outcome beside a quiet record"
   pass "host+hook: a captain outcome beside a quiet record rewakes the present captain with no away note"
+}
+
+# A later event closes the successor before the engine drains its granted
+# rows. That drain begins handling, but acknowledging only the grant leaves
+# the later row queued. With no successor left to publish downtime on exit,
+# the host must restore it itself or the Stop hook discards its banner (exit 0).
+test_claude_stop_hook_delivers_after_successor_closed_during_engine() {
+  local mode home key successor drained
+  for mode in emptyresult captain; do
+    home=$(make_primary_home "hook-closed-successor-$mode")
+    ln -s "$ROOT/.agents" "$home/.agents"
+    echo "held-$mode" > "$home/stub-mode"
+    mkfifo "$home/stub-release"
+    start_hook_session "$home"
+    wait_until 150 test -s "$home/state/.lock" || fail "closed successor: no main session"
+    key=$(FM_HOME="$home" bash -c '
+      . "$1/bin/fm-wake-lib.sh"
+      . "$1/bin/fm-supervision-engine-lib.sh"
+      fm_supervision_host_main_key "$2/state"
+    ' _ "$ROOT" "$home") || fail "closed successor: no session key"
+    # A failed probe of an already latched session, matching the field case.
+    printf 'key=%s|claude|sonnet\nerrors=3\ncooldown=600\nretry_after=1\n' "$key" > "$home/state/.supervision-host-health"
+    turn_end "$home"
+    wait_until 150 watcher_live "$home" || fail "closed successor: no initial watcher"
+    append_status "$home" 'first event'
+    wait_until 300 test -e "$home/stub-waiting" || fail "closed successor: engine did not start"
+    successor=$(cat "$home/state/.watch.lock/pid")
+    append_status "$home" 'later event needs main' needs-decision
+    wait_until 300 bash -c '! kill -0 "$1" 2>/dev/null' _ "$successor" || fail "closed successor: later event did not close it"
+    printf 'continue\n' > "$home/stub-release"
+    wait_until 300 hook_exited "$home" || fail "closed successor: hook did not close"
+    assert_rewoke_main "$home" "closed successor ($mode)"
+    if [ "$mode" = emptyresult ]; then
+      assert_grep 'errors=4' "$home/state/.supervision-host-health" "the failed probe must retain the latch policy"
+      assert_grep 'cooldown=1200' "$home/state/.supervision-host-health" "the failed probe must double the cooldown"
+      assert_grep 'engine turn ended with an error or an incomplete result' "$home/hook.err" "main must receive the failed-turn hand-back"
+    else
+      assert_grep 'supervision-host: branch-outcome:' "$home/hook.err" "main must receive the captain outcome"
+    fi
+    drained=$(main_drain "$home")
+    assert_contains "$drained" 'later event needs main' "the ungranted event must remain available to main"
+    : > "$home/session.stop"
+    stop_home_processes "$home"
+  done
+  pass "host+hook: failed probes and captain outcomes rewake main after the successor closed during the engine turn"
+}
+
+test_claude_stop_hook_reports_failed_handback_publication() {
+  local home real_mktemp
+  home=$(make_primary_home hook-handback-write-fails)
+  ln -s "$ROOT/.agents" "$home/.agents"
+  echo emptyresult > "$home/stub-mode"
+  real_mktemp=$(command -v mktemp)
+  cat > "$home/fakebin/mktemp" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *'/state/.watcher-down.tmp.'*) [ ! -e "\$FM_HOME/stub-finished" ] || exit 1 ;;
+esac
+exec "$real_mktemp" "\$@"
+SH
+  chmod +x "$home/fakebin/mktemp"
+  start_hook_session "$home"
+  turn_end "$home"
+  wait_until 150 watcher_live "$home" || fail "hand-back write failure: no watcher"
+  append_status "$home" 'first event'
+  wait_until 400 hook_exited "$home" || fail "hand-back write failure: hook did not close"
+  assert_re 'to-main[[:space:]]+downtime-unrestored' "$home/state/.supervision-host.log" "the hand-back publication must have failed"
+  expect_code 2 "$(cat "$home/hook.rc")" "a failed hand-back must notify main"
+  assert_grep 'firstmate watcher auto-arm FAILED' "$home/hook.err" "the failed hand-back must surface a failure notice"
+  assert_re 'outcome=failed ' "$home/state/.claude-autoarm-epoch" "failure must close the arm claim"
+  pass "host+hook: failed hand-back publication surfaces a committed failure instead of silently losing the wake"
 }
 
 # Default-on for Claude (docs/configuration.md "Supervision host"): through the
@@ -2624,6 +2706,8 @@ test_close_accepted_away_that_turns_attended_passes_to_main
 test_attended_close_that_turns_main_only_before_its_turn_passes_to_main
 test_claude_stop_hook_delivers_a_main_only_pass_through
 test_claude_stop_hook_rewakes_a_present_captain_beside_a_quiet_record
+test_claude_stop_hook_delivers_after_successor_closed_during_engine
+test_claude_stop_hook_reports_failed_handback_publication
 test_claude_stop_hook_runs_the_host_without_the_file_and_off_opts_out
 test_claude_stop_hook_delivers_a_close_that_turns_main_only_at_its_turn
 test_claude_stop_hook_notifies_when_at_turn_downtime_write_fails

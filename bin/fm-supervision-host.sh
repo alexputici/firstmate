@@ -84,7 +84,12 @@
 # Every other outcome exits with the close's own reason line plus one
 # "supervision-host:" line saying why main has this wake, after stopping the
 # successor cycle so main's next turn end starts from the same state as
-# without the host. Whenever the captain returned during an away engine turn
+# without the host. It explicitly republishes downtime before emitting the
+# hand-back: a successor that already closed cannot do that after the engine's
+# drain changed the marker to handling or its acknowledgement retired it.
+# A failed publication exits nonzero without a close so the arm owner reports
+# the delivery failure instead of treating it as an actionable success.
+# Whenever the captain returned during an away engine turn
 # that recorded visible outcomes, handled or not, the return brief was rendered
 # before they existed, so the host exits with the close, one "supervision-host:"
 # line naming them, and one line per visible outcome, for main to relay. The
@@ -546,6 +551,10 @@ retire_successor() {
 # any further "supervision-host:" lines, and exit.
 exit_to_main() {  # <why> [further lines]
   retire_successor
+  if ! fm_recovery_marker_publish "$STATE/.watcher-down" downtime >/dev/null 2>&1; then
+    log_line "to-main	downtime-unrestored	$1"
+    exit 1
+  fi
   log_line "to-main	$1"
   emit "supervision-host: $1" "${2:-}"
   exit 0

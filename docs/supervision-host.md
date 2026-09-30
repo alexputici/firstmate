@@ -225,7 +225,9 @@ The captain row is still durable, and the next drain presents it until it is ack
 ## Failure direction
 
 Every path that cannot finish a wake the engine took hands that wake to main, with one `supervision-host: <why>` line after the close.
-Before handing it back, the host stops its successor cycle.
+Before handing it back, the host stops its successor cycle and explicitly restores the recovery marker to downtime.
+A successor that already closed during the engine turn cannot restore it after the engine's drain began handling, so relying on watcher cleanup alone would let Claude's Stop hook silently refuse the rewake.
+If that restoration fails, the host exits nonzero without an actionable close, letting the arm owner's existing failure path report the delivery failure.
 So the owner's next arm starts from the same state as without the host, and the wake stays durable in the queue.
 
 ### Paths that hand the wake back
@@ -402,7 +404,7 @@ Each arm owner's own suite covers its host mode against a stub host.
 
 | Test | What it covers |
 |---|---|
-| `tests/fm-supervision-host.test.sh` | Drives the real host, auto-arm, grant, drain, report, and lease scripts against a stub engine, in both postures, including the shared offer rule and the drain's `BRANCH OUTCOMES` section. |
+| `tests/fm-supervision-host.test.sh` | Drives the real host, auto-arm, grant, drain, report, and lease scripts against a stub engine, in both postures, including the shared offer rule, the drain's `BRANCH OUTCOMES` section, and hand-back delivery after a successor closes during an engine turn. |
 | `tests/fm-claude-stop-autoarm.test.sh` | The Claude arm owner's host mode against a stub host. |
 | `tests/fm-cursor-primary.test.sh` | The Cursor arm owner's host mode against a stub host. |
 | `tests/fm-pi-watch-extension.test.sh` | The OpenCode plugin's host mode against a stub host. |
@@ -413,7 +415,7 @@ Each arm owner's own suite covers its host mode against a stub host.
 | `tests/fm-afk-launch.test.sh` | The home gate on each primary, the `/afk` daemon refusal, and `/quiet` on a home that runs the host: the statement, the paused statement, each named missing part, the quiet daemon fallback that carries its recorded mode, a failed quiet start that archives its quiet record, and the refusal under a live away record until the return. |
 | `tests/fm-afk-return.test.sh` | The return's drain-owned read-cursor advance through the away window on a host home, and none on Pi. |
 | `tests/fm-supervision-host-live-e2e.test.sh` | Runs a real engine turn; opt-in because it spends tokens. |
-| `tests/fm-supervision-host-attended-live-e2e.test.sh` | Opt-in credentialed guard for repeated attended main-only hand-backs to an idle Claude primary, the successor's own close, a close that turns main-only at its turn, and a stand-in remote listener; accepts a pre-fix ref for a negative control. |
+| `tests/fm-supervision-host-attended-live-e2e.test.sh` | Opt-in credentialed guard for repeated attended main-only hand-backs to an idle Claude primary, the successor's own close, a close that turns main-only at its turn, a failed engine probe after its successor closes, and a stand-in remote listener; accepts pre-fix refs for negative controls. |
 | `tests/fm-host-mirror-live-e2e.test.sh` | Proves the Claude and Cursor mirror writers against the real harnesses; opt-in because it spends tokens. |
 
 [verification/supervision.md](verification/supervision.md#supervision-host) records the dated live results.
