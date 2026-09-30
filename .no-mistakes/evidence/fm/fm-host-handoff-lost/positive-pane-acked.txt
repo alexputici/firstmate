@@ -1,0 +1,50 @@
+
+
+✻ Cooked for 5s · done 6:36 AM
+
+⏺ Stop hook feedback
+
+⏺ Bash(bin/fm-wake-drain.sh)
+  ⎿  1790771815 8       signal  labremote.status        needs-decision: /private/var/folders/wp/05fsx4zj5z34mby9_bfg2lch0000gn/T/fm-sh-attended-live.0kCTrw/positive/fm/state/labremote.status
+     WAKE_ACK_REQUIRED: after handling completes run bin/fm-wake-drain.sh --ack-through 8 --recovery-generation 74468.1790771815.VWcYUM
+     wake annotation: latest wake-EVENT observed at drain, not current state: labremote.status: needs-decision [at=1790771813] [key=lab-e3]: remote asks: approve the lab deploy?
+     OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+     demo [key=lab-e1] needs-decision: pick export format A or B
+     demo [key=lab-e2] needs-decision: pick region east or west
+     labremote [key=lab-e3] needs-decision: remote asks: approve the lab deploy?
+     OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+     WARNING: queued wakes pending - drain them with bin/fm-wake-drain.sh before anything else.
+
+⏺ Bash(bin/fm-wake-drain.sh --ack-through 8 --recovery-generation 74468.1790771815.VWcYUM)
+  ⎿  (No output)
+
+⏺ ACKED
+
+✻ Worked for 6s · done 6:37 AM
+
+⏺ Stop hook feedback
+
+⏺ Bash(bin/fm-wake-drain.sh)
+  ⎿  1790771853 12      signal  demo2.status    needs-decision: /private/var/folders/wp/05fsx4zj5z34mby9_bfg2lch0000gn/T/fm-sh-attended-live.0kCTrw/positive/fm/state/demo2.status
+     WAKE_ACK_REQUIRED: after handling completes run bin/fm-wake-drain.sh --ack-through 12 --recovery-generation 18818.1790771840.25BLqu
+     wake annotation: unread wake-EVENT since last drain, not current state: demo2.status: working [at=1790771838]: rollout prep started
+     wake annotation: latest wake-EVENT observed at drain, not current state: demo2.status: needs-decision [at=1790771838] [key=lab-e4]: pick a rollout window
+     OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+     demo [key=lab-e1] needs-decision: pick export format A or B
+     demo [key=lab-e2] needs-decision: pick region east or west
+     demo2 [key=lab-e4] needs-decision: pick a rollout window
+     labremote [key=lab-e3] needs-decision: remote asks: approve the lab deploy?
+     OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+     WARNING: queued wakes pending - drain them with bin/fm-wake-drain.sh before anything else.
+
+⏺ Bash(bin/fm-wake-drain.sh --ack-through 12 --recovery-generation 18818.1790771840.25BLqu)
+  ⎿  (No output)
+
+· Gallivanting… (5s · ↓ 339 tokens · thinking)
+  ⎿  Tip: Send messages to Claude while it works to steer Claude in real-time
+                                                                                                                                                                                                              58648 tokens
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  /p/v/f/w/0/T/f/p/fm ⎇main Hk·xh @alex c:29%
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent
