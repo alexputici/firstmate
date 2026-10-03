@@ -1,0 +1,3 @@
+1791008840	start	gen=host-2400-1791008840	primary=claude
+1791008850	failed	turn=host-2400-1791008840.1	posture=attended	rc=0	reports=1	unacked=none	error=1 cost=0 conversation_cost=0 input=0 cache_read=0 cache_write=0 output=0 turns=0		signal: /private/var/folders/wp/05fsx4zj5z34mby9_bfg2lch0000gn/T/fm-supervision-host.NGnRuM/hook-handback-write-fails/state/demo.status
+1791008851	to-main	downtime-unrestored	the supervision session could not take this wake: the engine turn ended with an error or an incomplete result; this wake is yours
