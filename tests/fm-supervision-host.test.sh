@@ -140,7 +140,7 @@ case "$mode" in
     esac
     case "$mode" in return-fail|return-fail-silent) exit 3 ;; esac
     [ "$mode" != return-first ] || sleep "$FM_TEST_STUB_MAX_BLOCK_SECONDS"
-    [ "$mode" != emptyresult ] || { printf '{}\n'; exit 0; }
+    [ "$mode" != emptyresult ] || { : > "$FM_HOME/stub-finished"; printf '{}\n'; exit 0; }
     result
     ;;
   noreport) result ;;
@@ -1330,6 +1330,37 @@ test_claude_stop_hook_rewakes_a_present_captain_beside_a_quiet_record() {
   drained=$(main_drain "$home")
   assert_contains "$drained" " ago] demo: stub escalated: " "main's drain must present the captain outcome beside a quiet record"
   pass "host+hook: a captain outcome beside a quiet record rewakes the present captain with no away note"
+}
+
+# A failed engine result after acknowledging the last row leaves acked:handling.
+# If downtime publication then fails, the host must return a failure without
+# an actionable banner: the Stop hook deliberately ignores acknowledged wakes.
+test_claude_stop_hook_reports_failed_handback_publication() {
+  local home real_mktemp
+  home=$(make_primary_home hook-handback-write-fails)
+  ln -s "$ROOT/.agents" "$home/.agents"
+  echo emptyresult > "$home/stub-mode"
+  real_mktemp=$(command -v mktemp)
+  cat > "$home/fakebin/mktemp" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *'/state/.watcher-down.tmp.'*) [ ! -e "\$FM_HOME/stub-finished" ] || exit 1 ;;
+esac
+exec "$real_mktemp" "\$@"
+SH
+  chmod +x "$home/fakebin/mktemp"
+  start_hook_session "$home"
+  turn_end "$home"
+  wait_until 150 watcher_live "$home" || fail "hand-back write failure: no watcher"
+  append_status "$home" 'first event'
+  wait_until 400 hook_exited "$home" || fail "hand-back write failure: hook did not close"
+  assert_re 'to-main[[:space:]]+downtime-unrestored' "$home/state/.supervision-host.log" "the hand-back publication must have failed"
+  assert_re '^acked:handling:' "$home/state/.watcher-down" "fixture: the engine must have acknowledged its last row before publication failed"
+  ! watcher_live "$home" || fail "fixture: the host must have retired its successor"
+  expect_code 2 "$(cat "$home/hook.rc")" "a failed hand-back must notify main"
+  assert_grep 'firstmate watcher auto-arm FAILED' "$home/hook.err" "the failed hand-back must surface a failure notice"
+  assert_re 'outcome=failed ' "$home/state/.claude-autoarm-epoch" "failure must close the arm claim"
+  pass "host+hook: failed hand-back publication surfaces a committed failure instead of silently losing the wake"
 }
 
 # Default-on for Claude (docs/configuration.md "Supervision host"): through the
@@ -2922,6 +2953,7 @@ test_close_accepted_away_that_turns_attended_passes_to_main
 test_attended_close_that_turns_main_only_before_its_turn_passes_to_main
 test_claude_stop_hook_delivers_a_main_only_pass_through
 test_claude_stop_hook_rewakes_a_present_captain_beside_a_quiet_record
+test_claude_stop_hook_reports_failed_handback_publication
 test_claude_stop_hook_runs_the_host_without_the_file_and_off_opts_out
 test_claude_stop_hook_delivers_a_close_that_turns_main_only_at_its_turn
 test_claude_stop_hook_notifies_when_at_turn_downtime_write_fails
