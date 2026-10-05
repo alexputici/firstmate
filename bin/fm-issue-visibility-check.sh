@@ -5,7 +5,8 @@
 # arm writes state/issue-visibility.check.sh and registers its bytes through
 # fm-check-register.sh. Nothing arms this check automatically. disarm calls
 # fm-check-unregister.sh and removes state/.issue-visibility-check: it is complete
-# removal, so a later arm starts with empty alert history.
+# removal, and a fresh arm clears any record a check that straddled the disarm
+# wrote back, so a later arm starts with empty alert history.
 #
 # check consumes only fm-bearings-snapshot.sh --json --include-issues. It prints
 # one pointer to Bearings when an uncertain repo-qualified issue identity or an
@@ -111,10 +112,12 @@ action_check() (
     elif [ "$rc" -ne 0 ]; then problem="snapshot failed (exit $rc)"
     elif ! jq -e '
       .issue_visibility | .schema=="fm-issue-visibility.v1"
-      and (.complete|type)=="boolean" and (.rows|type)=="array"
-      and all(.rows[]; (.id|type)=="string" and (.classification=="uncertain" or .classification=="covered" or .classification=="parked" or .classification=="unmeasured"))
+      and (.complete|type)=="boolean" and (.rows|type)=="array" and (.rows_omitted|type)=="number"
+      and all(.rows[]; (.id|type)=="string" and (.tasks_omitted|type)=="number" and (.completed_tasks_omitted|type)=="number"
+        and (.classification=="uncertain" or .classification=="covered" or .classification=="parked" or .classification=="unmeasured"))
       and (.repos|type)=="array" and (.homes|type)=="array" and (.omitted|type)=="array"
-      and all(.repos[]; (.repo|type)=="string" and (.measured|type)=="boolean")
+      and all(.repos[]; (.repo|type)=="string" and (.measured|type)=="boolean" and (.reason==null or (.reason|type)=="string"))
+      and all(.homes[]; (.owner|type)=="string" and (.measured|type)=="boolean")
       and (.counts.uncertain|type)=="number" and (.counts.unmeasured|type)=="number"
     ' "$tmp/snapshot" >/dev/null 2>&1; then problem='snapshot projection unavailable or invalid'; fi
   fi
@@ -268,6 +271,11 @@ action_arm() {
       printf 'fm-issue-visibility-check: could not save the existing %s\n' "$CHECK_SHIM" >&2
       return 1
     }
+  else
+    # A fresh arm from the disarmed state starts with empty alert history even
+    # when a check that straddled the disarm rewrote the record disarm removed.
+    # Re-arming a home that still holds its shim keeps history untouched.
+    rm -f -- "$RECORD" || return 1
   fi
   # The shim exists unbound from the rename until the register returns, so a
   # signal in that window rolls back the same way a failure does.

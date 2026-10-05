@@ -158,7 +158,7 @@ test_cadence_and_input() {
 }
 
 test_snapshot_failure_and_timeout() {
-  local home out started bin
+  local home out started bin rc
   home=$(make_home timeout)
   check "$home" >/dev/null
   started=$SECONDS
@@ -180,7 +180,25 @@ test_snapshot_failure_and_timeout() {
   out=$(in_home "$home" "$bin/fm-issue-visibility-check.sh")
   assert_contains "$out" 'unmeasured' 'invalid snapshot output was silent'
   assert_json "$home/state/.issue-visibility-check" '(.uncertain|length)==2' 'invalid snapshot erased history'
-  pass 'whole-snapshot timeout, nonzero exit and malformed output alert without erasing history'
+  # A parseable projection with a mistyped field the extraction consumes (a
+  # non-string home owner) must take the same unmeasured path, not crash silently.
+  home=$(make_home mistyped-owner)
+  check "$home" >/dev/null
+  bin="$home/copy"
+  mkdir -p "$bin"
+  cp "$CHECK" "$bin/"
+  for lib in fm-timeout-lib.sh fm-pr-lib.sh fm-check-lib.sh; do ln -s "$ROOT/bin/$lib" "$bin/$lib"; done
+  cat > "$bin/fm-bearings-snapshot.sh" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' '{"issue_visibility":{"schema":"fm-issue-visibility.v1","complete":true,"rows":[],"rows_omitted":0,"repos":[],"homes":[{"owner":42,"measured":false}],"omitted":[],"counts":{"uncertain":0,"unmeasured":0}}}'
+STUB
+  chmod +x "$bin/fm-bearings-snapshot.sh"
+  rc=0
+  out=$(in_home "$home" "$bin/fm-issue-visibility-check.sh") || rc=$?
+  expect_code 0 "$rc" 'mistyped home owner crashed the check instead of alerting'
+  assert_contains "$out" 'unmeasured' 'mistyped home owner silenced the alert'
+  assert_json "$home/state/.issue-visibility-check" '(.uncertain|length)==2' 'mistyped home owner erased identity history'
+  pass 'whole-snapshot timeout, nonzero exit, malformed output and mistyped fields alert without erasing history'
 }
 
 watch() {
@@ -201,6 +219,8 @@ test_watcher_lifecycle() {
   out=$(watch "$home" 12)
   assert_contains "$out" 'check:' 'watcher did not produce check wake'
   assert_contains "$out" '2 uncertain issues (2 new)' 'watcher lost issue report'
+  in_home "$home" "$CHECK" arm >/dev/null
+  assert_present "$home/state/.issue-visibility-check" 're-arm of an armed home dropped alert history'
   in_home "$home" "$CHECK" disarm >/dev/null
 
   home=$(make_home tampered)
@@ -227,8 +247,13 @@ test_watcher_lifecycle() {
   home=$(make_home rearmed)
   in_home "$home" "$CHECK" arm >/dev/null
   check "$home" >/dev/null
+  cp "$home/state/.issue-visibility-check" "$home/straggler"
   in_home "$home" "$CHECK" disarm >/dev/null
+  # A check that straddled the disarm can rewrite the record disarm removed;
+  # the next fresh arm must still start with empty alert history.
+  cp "$home/straggler" "$home/state/.issue-visibility-check"
   in_home "$home" "$CHECK" arm >/dev/null
+  assert_absent "$home/state/.issue-visibility-check" 'arm kept history a straddling check left after disarm'
   out=$(watch "$home" 12)
   assert_contains "$out" '2 uncertain issues (2 new)' 're-arm did not start fresh'
   in_home "$home" "$CHECK" disarm >/dev/null
