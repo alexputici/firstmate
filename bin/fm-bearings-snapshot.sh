@@ -173,9 +173,12 @@ Raise FM_BEARINGS_PR_LIMIT to expand per-repository open-PR results.
 --include-issues adds issue_visibility, a report-only projection from the canonical
   issue_sources in main and already-collected secondmate homes. No verdict is stored.
   Only an open task citing the exact issue URL or an open closing-reference PR covers
-  an issue. A parked hold or future hold_until parks it; all other measured rows are
-  uncertain. Children never cover parents. Assignees, labels, closed PRs and completed
-  task citations are evidence only. Identity is owner/repo#number plus URL.
+  an issue. A citing task parks it when its hold-kind is parked or future (the
+  tasks-axi hold --kind parked|future vocabulary) or its hold-until is still in the
+  future; holds of other kinds with no future hold-until still cover it. All other
+  measured rows are uncertain. Children never cover parents. Assignees, labels,
+  closed PRs and completed task citations are evidence only. Identity is
+  owner/repo#number plus URL.
   issue_visibility contains complete, proven_clear, known/checked repo counts,
   unmeasured_homes, repos (coverage/reason/counts), rows (flat parent-linked issue
   records with per-class child counts), and omitted disclosures. Counts are lower
@@ -849,7 +852,7 @@ EOF
        and ($mates.truncated // 0)==0 and $mates.registry.complete != false) as $local_complete
     | ([ $issues[] as $issue
       | ([$tasks[] | select(.issue_urls|index($issue.url))
-          | . + {parked:(.hold_kind=="parked" or (.hold_until!=null and .hold_until > ($now|split("T")[0])))}]) as $links
+          | . + {parked:(.hold_kind=="parked" or .hold_kind=="future" or (.hold_until!=null and .hold_until > ($now|split("T")[0])))}]) as $links
       | ([$snapshot[0].backlog.records[] | select(.state=="done")
            | select((.issue_urls // [])|index($issue.url)) | {id,owner:"(main)"}]) as $completed
       | ($repos[] | select(.repo==$issue.repo)) as $coverage

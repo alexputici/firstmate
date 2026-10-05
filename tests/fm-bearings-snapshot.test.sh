@@ -3424,6 +3424,10 @@ test_issue_visibility_classes_grouping_and_repeatability() {
 - [ ] active-link - Active scope https://github.com/example-org/alpha/issues/24 (repo: alpha) (kind: ship) (since 2026-01-01)
 ## Queued
 - [ ] parked-link - Parked scope https://github.com/example-org/alpha/issues/25 (repo: alpha) (kind: ship) (hold: Later) (hold-kind: captain) (hold-until: 2099-01-01)
+- [ ] axi-parked - Shelved scope https://github.com/example-org/beta/issues/25 (repo: beta) (kind: ship) (hold: shelved) (hold-kind: parked)
+- [ ] axi-future - Deferred scope https://github.com/example-org/beta/issues/26 (repo: beta) (kind: ship) (hold: revisit) (hold-kind: future) (hold-until: 2026-01-01)
+- [ ] gated-link - Gated scope https://github.com/example-org/beta/issues/27 (repo: beta) (kind: ship) (hold: captain go needed) (hold-kind: captain)
+- [ ] external-link - Upstream scope https://github.com/example-org/beta/issues/28 (repo: beta) (kind: ship) (hold: upstream release pending) (hold-kind: external)
 - [ ] body-link - Body citation (repo: alpha) (kind: ship)
   https://github.com/example-org/alpha/issues/26
 ## Done
@@ -3443,6 +3447,14 @@ EOF
       | .classification=="parked" and .tasks[0].hold_until=="2099-01-01")
     and ($v.rows|map(select(.id=="example-org/alpha#26"))[0].classification)=="covered"
     and ($v.rows|map(select(.id=="example-org/beta#24"))[0].classification)=="uncertain"
+    and ($v.rows|map(select(.id=="example-org/beta#25"))[0]
+      | .classification=="parked" and .tasks[0].hold_kind=="parked" and .tasks[0].hold_until==null)
+    and ($v.rows|map(select(.id=="example-org/beta#26"))[0]
+      | .classification=="parked" and .tasks[0].hold_kind=="future" and .tasks[0].hold_until=="2026-01-01")
+    and ($v.rows|map(select(.id=="example-org/beta#27"))[0]
+      | .classification=="covered" and .tasks[0].hold_kind=="captain" and .tasks[0].hold_until==null)
+    and ($v.rows|map(select(.id=="example-org/beta#28"))[0]
+      | .classification=="covered" and .tasks[0].hold_kind=="external" and .tasks[0].hold_until==null)
     and (.decisions_open|all(.[];.id|startswith("example-org/")|not))
   ' >/dev/null || fail "incorrect issue classification: $out"
   again=$(issue_snapshot "$home") || fail 'fresh process issue retry failed'
