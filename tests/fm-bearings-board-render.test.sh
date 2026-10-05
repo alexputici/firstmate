@@ -94,12 +94,12 @@ require_listener_reached_poll() {  # <home>
 
 # Build the board from <underway-json> plus <charted-json> and return what the
 # renderer produced.
-render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charted_warning_more]
-  local home=$1 underway=$2 charted=$3 more=${4:-0} warning_more=${5:-0} data="$1/payload.json"
+render_board() {  # <home> <underway-json> <charted-json> [charted_more] [charted_warning_more] [landed-json]
+  local home=$1 underway=$2 charted=$3 more=${4:-0} warning_more=${5:-0} landed=${6:-[]} data="$1/payload.json"
   jq -n --argjson underway "$underway" --argjson charted "$charted" \
-    --argjson more "$more" --argjson warning_more "$warning_more" '{
+    --argjson more "$more" --argjson warning_more "$warning_more" --argjson landed "$landed" '{
     schema:"fm-bearings-board.v1", home:"render-home", generated:"2026-08-26T00:00Z",
-    prs_live:false, captains_call:[], underway:$underway, landed:[],
+    prs_live:false, captains_call:[], underway:$underway, landed:$landed,
     charted:$charted, charted_more:$more, charted_warning_more:$warning_more}' > "$data"
   PATH="$home/fakebin:$PATH" FM_HOME="$home" \
     FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
@@ -292,10 +292,13 @@ test_empty_deck_removes_navigation_and_rows_expose_full_text() {
   ]' '[
     {"id":"example-org/alpha#21","repo":"example-org/alpha","title":"A complete issue title that remains readable even when a compact row clips the displayed text","reason":"A complete issue coverage explanation that remains available when the compact detail line is clipped","dispatchable":false,"kind":"issue","issue_url":"https://github.com/example-org/alpha/issues/21","issue_class":"uncertain"},
     {"id":"queued-scope","repo":"example-org/alpha","title":"A complete queued task title","reason":"A complete queued task detail","dispatchable":false}
+  ]' 0 0 '[
+    {"id":"landed-scope","repo":"example-org/alpha","what":"A complete landed outcome description that remains readable even when a compact row clips the displayed text","owner":"mate/alpha","pr_url":"https://github.com/example-org/alpha/pull/88"}
   ]') || fail 'empty board could not render'
   printf '%s' "$out" | jq -e '.error=="" and .stackNavRemoved
-    and all((.underway + .charted)[]; .titleTooltip==.title and .subTooltip==.sub)
+    and all((.underway + .landed + .charted)[]; .titleTooltip==.title and .subTooltip==.sub)
     and (.underway[0].title|length)>80
+    and (.landed[0].title|length)>80
     and (.charted[0].title|length)>80' >/dev/null || fail "empty navigation or full-text exposure regressed: $out"
   pass 'an empty deck removes navigation and compact rows expose complete title and detail text'
 }

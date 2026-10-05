@@ -3459,6 +3459,8 @@ test_issue_visibility_classes_grouping_and_repeatability() {
 - [ ] axi-future - Deferred scope https://github.com/example-org/beta/issues/26 (repo: beta) (kind: ship) (hold: revisit) (hold-kind: future) (hold-until: 2026-01-01)
 - [ ] gated-link - Gated scope https://github.com/example-org/beta/issues/27 (repo: beta) (kind: ship) (hold: captain go needed) (hold-kind: captain)
 - [ ] external-link - Upstream scope https://github.com/example-org/beta/issues/28 (repo: beta) (kind: ship) (hold: upstream release pending) (hold-kind: external)
+- [ ] frag-link - Fragment citation https://github.com/example-org/alpha/issues/29#discussion-r7 (repo: alpha) (kind: ship)
+- [ ] case-link - Case citation https://github.com/Example-Org/Alpha/issues/30 (repo: alpha) (kind: ship)
 - [ ] body-link - Body citation (repo: alpha) (kind: ship)
   https://github.com/example-org/alpha/issues/26
 ## Done
@@ -3469,7 +3471,8 @@ EOF
     .issue_visibility as $v | $v.complete and $v.known==2 and $v.checked==2
     and ($v.rows|length)==38
     and ($v.rows|map(select(.id=="example-org/alpha#21"))[0]
-      | .classification=="uncertain" and .children.uncertain==13 and .child_scope.total==13 and .referenced_prs[0].state=="MERGED")
+      | .classification=="uncertain" and .children.uncertain==11 and .children.covered==2
+        and .child_scope.total==13 and .referenced_prs[0].state=="MERGED")
     and ($v.rows|map(select(.id=="example-org/alpha#22"))[0]
       | .classification=="uncertain" and (.completed_tasks|length)==1 and (.assignees|length)==1)
     and ($v.rows|map(select(.id=="example-org/alpha#23"))[0].classification)=="covered"
@@ -3477,6 +3480,10 @@ EOF
     and ($v.rows|map(select(.id=="example-org/alpha#25"))[0]
       | .classification=="parked" and .tasks[0].hold_until=="2099-01-01")
     and ($v.rows|map(select(.id=="example-org/alpha#26"))[0].classification)=="covered"
+    and ($v.rows|map(select(.id=="example-org/alpha#29"))[0].classification)=="covered"
+    and ($v.rows|map(select(.id=="example-org/beta#29"))[0].classification)=="uncertain"
+    and ($v.rows|map(select(.id=="example-org/alpha#30"))[0].classification)=="covered"
+    and ($v.rows|map(select(.id=="example-org/beta#30"))[0].classification)=="uncertain"
     and ($v.rows|map(select(.id=="example-org/beta#24"))[0].classification)=="uncertain"
     and ($v.rows|map(select(.id=="example-org/beta#25"))[0]
       | .classification=="parked" and .tasks[0].hold_kind=="parked" and .tasks[0].hold_until==null)
@@ -3493,8 +3500,11 @@ EOF
   canonical=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
     FM_CONFIG_OVERRIDE="$home/config" FM_PROJECTS_OVERRIDE="$home/projects" PATH="$home/fakebin:$PATH" \
     NET_LOG="$home/network.log" bash "$ROOT/bin/fm-fleet-snapshot.sh" --secondmate-home-summary)
-  printf '%s' "$canonical" | jq -e '.issue_sources.tasks.records | any(.[];.id=="body-link" and .issue_urls==["https://github.com/example-org/alpha/issues/26"])' >/dev/null \
-    || fail 'home summary lost exact body citation'
+  printf '%s' "$canonical" | jq -e '.issue_sources.tasks.records
+    | any(.[];.id=="body-link" and .issue_urls==["https://github.com/example-org/alpha/issues/26"])
+    and any(.[];.id=="frag-link" and .issue_urls==["https://github.com/example-org/alpha/issues/29"])
+    and any(.[];.id=="case-link" and .issue_urls==["https://github.com/Example-Org/Alpha/issues/30"])' >/dev/null \
+    || fail 'home summary lost exact body citation or fragment normalization'
   pass 'issue coverage is exact, grouped, persistent across fresh runs, and preserves partial scope'
 }
 
@@ -3572,7 +3582,50 @@ EOF
   pass 'local and remote task URLs survive summaries; legacy summaries and source bounds are unmeasured'
 }
 
+test_issue_sources_trim_keeps_home_summary_under_the_transport_limit() {
+  local home mate out bytes
+  home=$(issue_home issue-trim-parent)
+  mate=$(issue_home issue-trim-mate)
+  printf '# Synthetic home\n' > "$mate/AGENTS.md"
+  printf 'issue-trim-mate\n' > "$mate/.fm-secondmate-home"
+  # Maximal default bounds: FM_SNAPSHOT_ISSUE_TASKS (200) tasks each citing
+  # FM_SNAPSHOT_ISSUE_LINKS (20) distinct issues. The untrimmed issue_sources
+  # alone exceeds FM_SNAPSHOT_SECONDMATE_MAX_BYTES (262144).
+  awk 'BEGIN{
+    print "## In flight";
+    print "## Queued";
+    print "- [ ] decision-hold - Pick a direction (repo: alpha) (kind: ship) (hold: Pick A or B) (hold-kind: captain) (since 2026-01-01)";
+    for (i = 1; i <= 200; i++) {
+      printf "- [ ] bulk-%03d - Bulk citation scope (repo: alpha) (kind: ship) (since 2026-01-01)\n", i;
+      for (j = 1; j <= 20; j++)
+        printf "  https://github.com/example-org/a-synthetic-maximal-bound-project/issues/%d\n", i * 100 + j;
+    }
+    print "## Done";
+  }' > "$mate/data/backlog.md"
+  out=$(FM_SNAPSHOT_NOW=2026-01-03T00:00:00Z issue_home_summary "$mate") || fail 'maximal-bounds summary failed'
+  bytes=$(printf '%s\n' "$out" | LC_ALL=C wc -c | tr -d ' ')
+  [ "$bytes" -le 262144 ] || fail "maximal-bounds home summary exceeded the parent transport limit: $bytes bytes"
+  printf '%s' "$out" | jq -e '
+    .schema=="fm-secondmate-home-summary.v1" and .valid and .state=="captain_decision"
+    and (.decisions_open|any(.[]; .id=="decision-hold"))
+    and (.queued|length)>0
+    and (.issue_sources | .schema=="fm-issue-sources.v1"
+      and (.reason|type)=="string"
+      and .projects.complete==false and .projects.records==[]
+      and .tasks.complete==false and .tasks.records==[] and .tasks.known==200)' >/dev/null \
+    || fail "trimmed summary lost state, decisions or the trim disclosure: $out"
+  printf '%s\n' "$out" > "$mate/state/home-summary.json"
+  printf -- '- issue-trim-mate - Synthetic scope (home: %s; scope: synthetic work; projects: alpha; added 2026-01-01)\n' "$mate" > "$home/data/secondmates.md"
+  out=$(issue_snapshot "$home") || fail 'trimmed-mate projection failed'
+  printf '%s' "$out" | jq -e '.issue_visibility
+    | .complete==false and .proven_clear==false and .unmeasured_homes==1
+    and all(.rows[]; .classification=="unmeasured")' >/dev/null \
+    || fail "a trimmed home's issues were not reported unmeasured: $out"
+  pass 'a maximal-bounds summary stays under the transport limit, keeps state and decisions, and its trim reads unmeasured'
+}
+
 test_issue_visibility_secondmate_and_source_bounds
+test_issue_sources_trim_keeps_home_summary_under_the_transport_limit
 
 test_issue_visibility_classes_grouping_and_repeatability
 test_issue_visibility_incomplete_is_unmeasured

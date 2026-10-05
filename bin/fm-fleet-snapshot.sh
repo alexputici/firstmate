@@ -19,6 +19,7 @@
 #     Canonical tasks-axi rows are structured; free-form non-empty lines in
 #     those sections are preserved as unstructured records.
 #     Structured rows expose issue_urls extracted from the row and its body,
+#     normalized to the bare issue URL (any #fragment or ?query stripped),
 #     so issue consumers never parse the backlog or its prose a second time.
 #     Structured rows preserve captain-hold metadata such as hold_kind,
 #     hold_reason, and hold_until when tasks-axi emits it. They also carry
@@ -56,6 +57,10 @@
 #     never task bodies. FM_SNAPSHOT_ISSUE_TASKS (200) and
 #     FM_SNAPSHOT_ISSUE_LINKS (20 per task) bound this surface; omitted counts
 #     and complete=false disclose loss. Existing registry bounds apply to projects.
+#     A home summary that would exceed FM_SNAPSHOT_SECONDMATE_MAX_BYTES sheds
+#     its issue_sources records (disclosed incomplete, so the parent reports
+#     them unmeasured) instead of losing the whole summary to the parent's
+#     transport limit.
 #     Older home summaries without this optional field remain valid; consumers
 #     must treat their issue coverage as unmeasured.
 #   tasks[]: one row per task metadata record captured at snapshot start, sorted
@@ -562,7 +567,8 @@ backlog_json() (  # [<backlog-path>] - defaults to this home's $BACKLOG
         else . end)
     | .records |= map(if .structured then
         .issue_urls = ([.raw, .body_lines[]?] | join("\n")
-          | [scan("https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+(?![A-Za-z0-9_/#?])")] | unique)
+          | [scan("https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+(?![A-Za-z0-9_/])(?:[#?][^[:space:])\\]]*)?")]
+          | map(split("#")[0] | split("?")[0]) | unique)
         else . end)
     | .records as $records
     | (reduce ($records[] | select(.structured)) as $record ({};
@@ -990,7 +996,8 @@ main_inventory_json() {  # <backlog-json-file> <tasks-json-file>
 # This mode never reads parent events or terminal text and never aggregates
 # nested secondmates.
 secondmate_home_summary_json() {  # <backlog-json-file> <tasks-json-file>
-  jq -n \
+  local summary bytes
+  summary=$(jq -n \
     --arg generated "$SNAPSHOT_NOW" \
     --argjson generated_epoch "$SNAPSHOT_EPOCH" \
     --arg home "$FM_HOME" \
@@ -1171,7 +1178,22 @@ secondmate_home_summary_json() {  # <backlog-json-file> <tasks-json-file>
           (if ($tasks | length) > $child_n then {surface:"endpoints",count:(($tasks | length) - $child_n)} else empty end),
           (if $landed_n > 0 and ($landed_all | length) > $landed_n then {surface:"landed",count:(($landed_all | length) - $landed_n)} else empty end)
         ]
-      }'
+      }') || return 1
+  # issue_sources is the one summary surface whose default caps can outgrow the
+  # parent's whole-summary transport limit. Shed it, disclosed incomplete so the
+  # parent reports this home's issues unmeasured, rather than publish a summary
+  # the parent rejects outright, losing state, decisions and work.
+  bytes=$(printf '%s\n' "$summary" | LC_ALL=C wc -c | tr -d ' ')
+  if [ "$bytes" -gt "$FM_SNAPSHOT_SECONDMATE_MAX_BYTES" ]; then
+    summary=$(printf '%s\n' "$summary" | jq '
+      .issue_sources = {schema:"fm-issue-sources.v1",
+        reason:"issue sources trimmed: the full home summary exceeded the transport byte limit",
+        projects:{complete:false,known:.issue_sources.projects.known,
+          omitted:.issue_sources.projects.known,records:[]},
+        tasks:{complete:false,known:.issue_sources.tasks.known,
+          omitted:.issue_sources.tasks.known,records:[]}}') || return 1
+  fi
+  printf '%s\n' "$summary"
 }
 
 # Current registered-secondmate aggregation.

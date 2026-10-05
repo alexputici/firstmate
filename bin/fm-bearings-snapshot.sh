@@ -172,8 +172,9 @@ Opt-in surfaces: --fields bodies|paths|actions|endpoints, --all-in-flight,
 Raise FM_BEARINGS_PR_LIMIT to expand per-repository open-PR results.
 --include-issues adds issue_visibility, a report-only projection from the canonical
   issue_sources in main and already-collected secondmate homes. No verdict is stored.
-  Only an open task citing the exact issue URL or an open closing-reference PR covers
-  an issue. A citing task parks it when its hold-kind is parked or future (the
+  Only an open task citing the issue URL (any #fragment or ?query stripped,
+  owner/repo compared case-insensitively, the number exact) or an open
+  closing-reference PR covers an issue. A citing task parks it when its hold-kind is parked or future (the
   tasks-axi hold --kind parked|future vocabulary) or its hold-until is still in the
   future; holds of other kinds with no future hold-until still cover it. All other
   measured rows are uncertain. Children never cover parents. Assignees, labels,
@@ -852,10 +853,11 @@ EOF
     | (all($homes[]; .usable and .sources.projects.complete and .sources.tasks.complete)
        and ($mates.truncated // 0)==0 and $mates.registry.complete != false) as $local_complete
     | ([ $issues[] as $issue
-      | ([$tasks[] | select(.issue_urls|index($issue.url))
+      | ($issue.url|ascii_downcase) as $issue_key
+      | ([$tasks[] | select([.issue_urls[]|ascii_downcase]|index($issue_key))
           | . + {parked:(.hold_kind=="parked" or .hold_kind=="future" or (.hold_until!=null and .hold_until > ($now|split("T")[0])))}]) as $links
       | ([$snapshot[0].backlog.records[] | select(.state=="done")
-           | select((.issue_urls // [])|index($issue.url)) | {id,owner:"(main)"}]) as $completed
+           | select([(.issue_urls // [])[]|ascii_downcase]|index($issue_key)) | {id,owner:"(main)"}]) as $completed
       | ($repos[] | select(.repo==$issue.repo)) as $coverage
       | ($local_complete and $coverage.complete) as $measured
       | {id:($issue.repo+"#"+($issue.number|tostring)),repo:$issue.repo,url:$issue.url,
