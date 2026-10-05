@@ -1,0 +1,9 @@
+=== case: base-passed-then-held ===
+--- ci step log served to the reader ---
+all CI checks passed - still monitoring until merged or closed
+CI workflows are held awaiting maintainer approval - no jobs have run, waiting...
+--- stale status log tail ---
+done: PR checks green
+--- fm-crew-state output ---
+state: done · source: run-step · checks green: PR ready for review (still monitoring for merge/close): https://github.com/o/r/pull/2
+
