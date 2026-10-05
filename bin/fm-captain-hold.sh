@@ -67,8 +67,12 @@
 # changes a task, a hold, or dependency eligibility. Unresolved blockers, as
 # classified by the canonical fleet snapshot, take precedence over the date. `--needs-monitoring` is
 # read-only: exit 0 means an unannounced dated call or a queued due-review wake
-# needs native supervision, 1 means none, and 2 means the read failed. It includes
-# future and blocked dates so an otherwise idle home keeps its native watcher.
+# needs native supervision, 1 means none, and 2 means the read failed. Both
+# forms return 3 for a known unsupported backend, reporting unavailability
+# without changing supervision need. The probe bounds its queue-lock wait with
+# FM_STATUS_PRESENTATION_LOCK_TIMEOUT (default 10 seconds), like wake
+# presentation. It includes future and blocked dates so an otherwise idle home
+# keeps its native watcher.
 #
 # `answer` records the captain's exact words and resolves the call in the same
 # act. It requires a non-empty captain decision file of at most 8192 bytes and
@@ -2077,11 +2081,20 @@ announce_due_review() (
 )
 
 command_due_reviews() {
-  local data root backend file listing due today id until monitoring=0 queued
+  local data root backend file listing due today id until monitoring=0 queued lock_timeout
   if [ "${1:-}" = --needs-monitoring ]; then monitoring=1; shift; fi
   [ "$#" -eq 0 ] || { usage >&2; return 2; }
   if [ "$monitoring" = 1 ]; then
-    queued=$(fm_wake_queued_keys check) || return 2
+    lock_timeout=${FM_STATUS_PRESENTATION_LOCK_TIMEOUT:-10}
+    case "$lock_timeout" in ''|*[!0-9]*|0) lock_timeout=10 ;; esac
+    queued=$(
+      fm_lock_acquire_wait_bounded "$FM_WAKE_QUEUE_LOCK" "$lock_timeout" || {
+        printf 'fm-captain-hold: due-review queue read exceeded its lock bound\n' >&2
+        exit 2
+      }
+      trap 'fm_lock_release "$FM_WAKE_QUEUE_LOCK"' EXIT
+      fm_wake_queued_keys_locked check
+    ) || return 2
     case "$queued" in *due-review:*) return 0 ;; esac
   fi
   if [ ! -e "$DATA" ] && [ ! -L "$DATA" ]; then
@@ -2091,15 +2104,13 @@ command_due_reviews() {
   root=$(fm_backlog_root "$data") || return 2
   backend=$(fm_tasks_axi_backend_resolve "$root") || return 2
   if [ "$backend" != markdown ]; then
-    printf 'fm-captain-hold: due-review projection requires the markdown backlog backend\n' >&2
-    return 2
+    printf 'fm-captain-hold: due-review projection unavailable for backend %s\n' "$backend" >&2
+    return 3
   fi
-  if [ "$backend" = markdown ]; then
-    file=$(fm_backlog_file "$data") || return 2
-    # A state-only home has no backlog to announce, and must stay cheap.
-    if [ ! -e "$file" ] && [ ! -L "$file" ]; then
-      [ "$monitoring" = 0 ]; return "$?"
-    fi
+  file=$(fm_backlog_file "$data") || return 2
+  # A state-only home has no backlog to announce, and must stay cheap.
+  if [ ! -e "$file" ] && [ ! -L "$file" ]; then
+    [ "$monitoring" = 0 ]; return "$?"
   fi
   today=${FM_CAPTAIN_HOLD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
   today=${today%%T*}

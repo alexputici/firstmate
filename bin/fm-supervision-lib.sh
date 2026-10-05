@@ -99,7 +99,8 @@ fm_supervision_status() {
         "$owner" due-reviews --needs-monitoring >/dev/null || review_status=$?
       # An unreadable backlog must retain supervision so its scan reports the
       # concrete failure, not silently abandon a potentially dated review.
-      if [ "$review_status" != 1 ]; then
+      # A known unsupported backend (3) is not evidence of a dated review.
+      if [ "$review_status" != 1 ] && [ "$review_status" != 3 ]; then
         FM_SUP_NEEDED=true
         FM_SUP_DATED_REVIEW=true
       fi

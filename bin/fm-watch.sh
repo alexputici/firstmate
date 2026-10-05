@@ -2743,8 +2743,13 @@ while :; do
         "$SCRIPT_DIR/fm-captain-hold.sh" due-reviews); then
       [ -z "$due_reviews" ] || wake "$due_reviews"
     else
-      echo "watcher: due-review scan failed" >&2
-      exit 1
+      due_review_status=$?
+      if [ "$due_review_status" = 3 ]; then
+        triage_log "due-review projection unavailable for configured backend"
+      else
+        echo "watcher: due-review scan failed" >&2
+        exit 1
+      fi
     fi
   fi
 

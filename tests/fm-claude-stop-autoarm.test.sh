@@ -1723,6 +1723,12 @@ test_arms_for_dated_review_without_other_work() {
   out=$(run_autoarm "$dir" 2>/dev/null); status=$?
   expect_code 0 "$status" "empty date-only fixture must not arm"
   assert_absent "$dir/state/arm-ran" "empty fixture started an extra watcher"
+  printf 'backend = "beads"\n' > "$dir/.tasks.toml"
+  out=$(run_autoarm "$dir" 2>/dev/null); status=$?
+  expect_code 0 "$status" "unsupported backlog alone must not arm supervision"
+  assert_absent "$dir/state/arm-ran" "unsupported backlog started a watcher"
+  assert_not_contains "$out" 'Dated review monitoring' "unsupported backlog printed a dated-review banner"
+  cp "$ROOT/.tasks.toml" "$dir/.tasks.toml"
   FM_HOME="$dir" "$ROOT/bin/fm-captain-hold.sh" hold sample-review --title 'Future review' \
     --reason 'Review progress' --until 2099-01-01 >/dev/null || fail "dated review creation failed"
   out=$(run_autoarm "$dir" 2>/dev/null); status=$?

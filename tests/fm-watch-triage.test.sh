@@ -6880,6 +6880,73 @@ test_due_review_only_home_needs_monitoring() (
   pass "a dated review alone keeps native monitoring only until handled or closed"
 )
 
+# Known unavailable projections do not change the home's existing supervision.
+# A failed supported read is distinct and still retains monitoring.
+test_due_review_unsupported_backend_stays_idle() (
+  local home state fakebin out pid rc
+  home=$(make_case due-unsupported); state="$home/state"; fakebin="$home/fakebin"
+  mkdir -p "$home/data" "$home/config"
+  printf 'backend = "beads"\n' > "$home/.tasks.toml"
+  printf '## In flight\n\n## Queued\n\n## Done\n' > "$home/data/backlog.md"
+  # shellcheck disable=SC2030,SC2031
+  export FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$home/data" FM_CONFIG_OVERRIDE="$home/config"
+  unset TASKS_AXI_FILE TASKS_AXI_BACKEND
+  # shellcheck source=/dev/null
+  . "$ROOT/bin/fm-supervision-lib.sh"
+  rc=0
+  "$ROOT/bin/fm-captain-hold.sh" due-reviews --needs-monitoring > "$home/probe.out" 2> "$home/probe.err" || rc=$?
+  [ "$rc" = 3 ] || fail "unsupported projection did not have a distinct result: $rc"
+  assert_contains "$(cat "$home/probe.err")" 'unavailable' "unsupported projection was silent"
+  if fm_supervision_needed "$state" 2> "$home/probe.err"; then fail "unsupported backend alone requested supervision"; fi
+  [ "$FM_SUP_DATED_REVIEW" = false ] || fail "unsupported backend claimed a dated review"
+  FM_GUARD_READ_ONLY=1 "$ROOT/bin/fm-guard.sh" > "$home/guard.out" 2>&1
+  assert_not_contains "$(cat "$home/guard.out")" 'Dated review monitoring' "unsupported backend printed a dated-review banner"
+  out="$home/watch.out"
+  watch_bg "$state" "$fakebin" "$out" env FM_HEARTBEAT=1 FM_HEARTBEAT_MAX=1
+  pid=$!
+  wait_poll_cycle "$state" "$pid" || fail "unsupported projection stopped the watcher: $(cat "$out")"
+  assert_contains "$(cat "$state/.watch-triage.log")" 'due-review projection unavailable' "watcher did not report the unsupported projection"
+  [ ! -s "$state/.wake-queue" ] || fail "unsupported backend announced a review"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "unsupported watcher acknowledgement failed"
+
+  cp "$ROOT/.tasks.toml" "$home/.tasks.toml"
+  rm "$home/data/backlog.md"
+  mkdir "$home/data/backlog.md"
+  rc=0
+  "$ROOT/bin/fm-captain-hold.sh" due-reviews --needs-monitoring > "$home/probe.out" 2> "$home/probe.err" || rc=$?
+  [ "$rc" = 2 ] || fail "failed markdown read was confused with an unsupported backend: $rc"
+  fm_supervision_needed "$state" 2> "$home/probe.err" || fail "failed markdown read lost supervision"
+  [ "$FM_SUP_DATED_REVIEW" = true ] || fail "failed markdown read lost its monitoring diagnostic"
+  pass "unsupported backends remain idle and report unavailability while failed markdown reads retain supervision"
+)
+
+# A live queue-lock holder cannot indefinitely block the synchronous guard path.
+test_due_review_monitoring_lock_is_bounded() (
+  local home state rc out
+  home=$(make_case due-monitor-lock); state="$home/state"
+  mkdir -p "$home/data" "$home/config"
+  cp "$ROOT/.tasks.toml" "$home/.tasks.toml"
+  printf '## In flight\n\n## Queued\n\n## Done\n' > "$home/data/backlog.md"
+  # shellcheck disable=SC2030,SC2031
+  export FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$home/data" FM_CONFIG_OVERRIDE="$home/config"
+  unset TASKS_AXI_FILE TASKS_AXI_BACKEND
+  # shellcheck source=/dev/null
+  . "$ROOT/bin/fm-wake-lib.sh"
+  # shellcheck source=/dev/null
+  . "$ROOT/bin/fm-timeout-lib.sh"
+  fm_lock_acquire_wait "$FM_WAKE_QUEUE_LOCK" || fail "could not hold the fixture queue lock"
+  rc=0
+  out=$(FM_STATUS_PRESENTATION_LOCK_TIMEOUT=1 fm_run_timed 8 \
+    "$ROOT/bin/fm-captain-hold.sh" due-reviews --needs-monitoring 2>&1) || rc=$?
+  fm_lock_release "$FM_WAKE_QUEUE_LOCK"
+  [ "$rc" = 2 ] || fail "monitoring probe exceeded its own lock bound or lost failure status: $rc $out"
+  rc=0
+  "$ROOT/bin/fm-captain-hold.sh" due-reviews --needs-monitoring >/dev/null 2>&1 || rc=$?
+  [ "$rc" = 1 ] || fail "monitoring probe did not recover after the lock cleared: $rc"
+  pass "dated-review monitoring bounds a live queue-lock wait and recovers after release"
+)
+
 if [ -n "${FM_TEST_ONLY:-}" ]; then
   "$FM_TEST_ONLY" || exit 1
   exit 0
@@ -7034,3 +7101,6 @@ test_due_review_scan_bounds_and_failures || exit 1
 
 test_due_review_blocker_precedes_date || exit 1
 test_due_review_only_home_needs_monitoring || exit 1
+
+test_due_review_unsupported_backend_stays_idle || exit 1
+test_due_review_monitoring_lock_is_bounded || exit 1

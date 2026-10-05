@@ -72,7 +72,7 @@ Repeat and edge cases:
 
 The native watcher calls `fm-captain-hold.sh due-reviews` at its base heartbeat cadence, before status-signal exits can starve the scan.
 The command header owns structured date selection, publication receipts, and the existing queue acknowledgement contract.
-The scan uses the canonical markdown backlog projection; a different configured backend reports its unavailable projection rather than reading unrelated local records.
+The scan uses the canonical markdown backlog projection; a different configured backend reports its unavailable projection without requiring monitoring or interrupting an existing watcher.
 Unresolved blockers take precedence over the date through the canonical fleet snapshot's `hold_bucket` classification, leaving Bearings buckets unchanged.
 The shared supervision predicate includes future dated reviews, so startup guards and native Stop recovery keep monitoring even when no worker or registered check remains.
 It stops requiring supervision for that date once its queued announcement is acknowledged; a new date restores the requirement.
