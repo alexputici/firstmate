@@ -283,6 +283,24 @@ test_issue_rows_are_visible_and_never_pickable() {
   pass 'uncertain and unmeasured issues render separately and cannot enter the dispatch picker'
 }
 
+test_empty_deck_removes_navigation_and_rows_expose_full_text() {
+  local home out
+  home=$(make_home empty-deck-full-text)
+  out=$(render_board "$home" '[
+    {"id":"active-scope","repo":"example-org/alpha","name":"A complete task title that remains readable even when a compact row clips the displayed text","kind":"ship","state":"working","doing":"A complete activity description that remains available when the compact detail line is clipped"}
+  ]' '[
+    {"id":"example-org/alpha#21","repo":"example-org/alpha","title":"A complete issue title that remains readable even when a compact row clips the displayed text","reason":"A complete issue coverage explanation that remains available when the compact detail line is clipped","dispatchable":false,"kind":"issue","issue_url":"https://github.com/example-org/alpha/issues/21","issue_class":"uncertain"},
+    {"id":"queued-scope","repo":"example-org/alpha","title":"A complete queued task title","reason":"A complete queued task detail","dispatchable":false}
+  ]') || fail 'empty board could not render'
+  printf '%s' "$out" | jq -e '.error=="" and .stackNavRemoved
+    and all((.underway + .charted)[]; .titleTooltip==.title and .subTooltip==.sub)
+    and (.underway[0].title|length)>80
+    and (.charted[0].title|length)>80' >/dev/null || fail "empty navigation or full-text exposure regressed: $out"
+  pass 'an empty deck removes navigation and compact rows expose complete title and detail text'
+}
+
+test_empty_deck_removes_navigation_and_rows_expose_full_text
+
 test_issue_rows_are_visible_and_never_pickable
 
 test_an_underway_row_leads_with_the_task_name_and_keeps_its_run_status
