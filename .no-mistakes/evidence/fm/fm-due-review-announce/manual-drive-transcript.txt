@@ -1,0 +1,188 @@
+Manual product drive of the due-review lifecycle, run from the repository root
+against a disposable FM_HOME (exit 0, 13/13 assertions passed).
+
+# Fixture: work blocked by an undated external prerequisite, plus an
+# independent captain-held review carrying the date. No dependency edge
+# from the review to the work.
+
+$ tasks-axi add sample-prerequisite 'External prerequisite (IT ticket)'
+ok: added sample-prerequisite -> Queued
+task:
+  id: sample-prerequisite
+  title: External prerequisite (IT ticket)
+  state: queued
+  blocked: no
+  blocked_by: none
+  held: no
+  hold_reason: "-"
+  hold_kind: "-"
+  hold_until: "-"
+  kind: task
+  repo: "-"
+  priority: "-"
+  created: 2026-10-05
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+help[2]:
+  - Run `tasks-axi start sample-prerequisite` to move it to in flight
+  - Run `tasks-axi block sample-prerequisite --by <other>` to record a dependency
+
+$ tasks-axi hold sample-prerequisite --kind external --reason 'Waiting on the external team'
+ok: hold sample-prerequisite -> held (external)
+task:
+  id: sample-prerequisite
+  title: External prerequisite (IT ticket)
+  state: queued
+  blocked: no
+  blocked_by: none
+  held: yes
+  hold_reason: Waiting on the external team
+  hold_kind: external
+  hold_until: "-"
+  kind: task
+  repo: "-"
+  priority: "-"
+  created: 2026-10-05
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+help[2]:
+  - Run `tasks-axi unhold sample-prerequisite` to resume dispatch
+  - Run `tasks-axi ready --include-held` to review paused work
+
+$ tasks-axi add sample-work 'Work needing the prerequisite'
+ok: added sample-work -> Queued
+task:
+  id: sample-work
+  title: Work needing the prerequisite
+  state: queued
+  blocked: no
+  blocked_by: none
+  held: no
+  hold_reason: "-"
+  hold_kind: "-"
+  hold_until: "-"
+  kind: task
+  repo: "-"
+  priority: "-"
+  created: 2026-10-05
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+help[2]:
+  - Run `tasks-axi start sample-work` to move it to in flight
+  - Run `tasks-axi block sample-work --by <other>` to record a dependency
+
+$ tasks-axi block sample-work --by sample-prerequisite
+ok: block sample-work -> blocked-by sample-prerequisite
+help[2]:
+  - Run `tasks-axi unblock sample-work --by <other>` to clear it
+  - Run `tasks-axi ready` to see what is still dispatchable
+
+$ bin/fm-captain-hold.sh hold sample-review --title 'Follow up on the external wait' --reason 'Review progress' --until 2026-10-06
+sample-review
+# Day before the review date: the scan stays silent.
+
+$ FM_CAPTAIN_HOLD_NOW=2026-10-05T09:00:00Z bin/fm-captain-hold.sh due-reviews
+ASSERT ok: future review not announced, queue empty
+
+$ bin/fm-captain-hold.sh due-reviews --needs-monitoring; echo exit=$?
+exit=0
+ASSERT ok: future dated review demands native monitoring (exit 0)
+# The review date arrives: exactly one native announcement per task/date.
+
+$ FM_CAPTAIN_HOLD_NOW=2026-10-06T09:00:00Z bin/fm-captain-hold.sh due-reviews
+check: due-review sample-review 2026-10-06
+
+$ cat <disposable-home>/state/.wake-queue
+1791197200	1	check	due-review:sample-review:2026-10-06	check: due-review sample-review 2026-10-06
+
+$ FM_CAPTAIN_HOLD_NOW=2026-10-06T10:00:00Z bin/fm-captain-hold.sh due-reviews   # repeat scan
+ASSERT ok: one queued announcement for the task/date after a repeat scan
+# Announcing the review does not touch the external wait.
+
+$ tasks-axi ready
+count: 0
+ready: 0 unblocked queued tasks
+ready_public_followups: 0 delivery-ready obligations
+help[1]:
+  - Run `tasks-axi list --state queued` to see all queued work (incl. blocked)
+ASSERT ok: sample-work still blocked
+# Presentation is not handling: a second drain still presents the row.
+
+$ bin/fm-wake-drain.sh   # first presentation
+1:1791197200	1	check	due-review:sample-review:2026-10-06	check: due-review sample-review 2026-10-06
+
+$ bin/fm-wake-drain.sh   # presented again until acknowledged
+1:1791197200	1	check	due-review:sample-review:2026-10-06	check: due-review sample-review 2026-10-06
+# Ordinary acknowledgement consumes the row and writes the receipt.
+
+$ bin/fm-wake-drain.sh --ack-through 1 --recovery-generation <generation>
+
+$ cat <disposable-home>/state/.due-review-announced/sample-review.2026-10-06
+due-review:sample-review:2026-10-06
+ASSERT ok: queue empty after acknowledgement
+# The acknowledged date never fires again; monitoring stands down.
+
+$ FM_CAPTAIN_HOLD_NOW=2026-10-07T09:00:00Z bin/fm-captain-hold.sh due-reviews
+ASSERT ok: acknowledged date is silent
+
+$ bin/fm-captain-hold.sh due-reviews --needs-monitoring; echo exit=$?
+exit=1
+ASSERT ok: handled date no longer demands monitoring (exit 1)
+# Deferring the review to a new date announces exactly once more.
+
+$ bin/fm-captain-hold.sh hold sample-review --reason 'Still waiting; review again' --until 2026-10-08
+sample-review
+needs-monitoring exit=0
+ASSERT ok: new date restores the monitoring demand
+
+$ FM_CAPTAIN_HOLD_NOW=2026-10-08T09:00:00Z bin/fm-captain-hold.sh due-reviews
+check: due-review sample-review 2026-10-08
+ASSERT ok: new date queued its own announcement
+# Closing the review with the captain's words does not resolve the wait.
+
+$ printf 'I followed up, still waiting on IT.' > answer && bin/fm-captain-hold.sh answer sample-review --decision-file answer
+answered: sample-review
+
+$ tasks-axi show sample-prerequisite --full
+task:
+  id: sample-prerequisite
+  title: External prerequisite (IT ticket)
+  state: queued
+  blocked: no
+  blocked_by: none
+  held: yes
+  hold_reason: Waiting on the external team
+  hold_kind: external
+  hold_until: "-"
+  kind: task
+  repo: "-"
+  priority: "-"
+  created: 2026-10-05
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+ASSERT ok: external prerequisite untouched by the review lifecycle
+ASSERT ok: sample-work still blocked after the review closed
+ASSERT ok: closed review needs no monitoring
+# Only completing the external prerequisite itself releases the work.
+
+$ tasks-axi done sample-prerequisite && tasks-axi ready
+ok: done sample-prerequisite -> Done
+help[1]:
+  - Run `tasks-axi ready` to dispatch work unblocked by this
+count: 1
+ready[1]{id,state,kind,repo,title}:
+  sample-work,queued,task,"-",Work needing the prerequisite
+ready_public_followups: 0 delivery-ready obligations
+help[1]:
+  - Run `tasks-axi start <id>` to dispatch one of these
+ASSERT ok: work became eligible when the prerequisite completed
+
+MANUAL DRIVE RESULT: all assertions passed

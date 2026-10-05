@@ -1,0 +1,23 @@
+Focused due-review regression cases on submitted head af64f6832e85b4322b87e82dfb412e7b8a1eb3eb.
+Each case ran as: env -u GIT_CONFIG_PARAMETERS -u GIT_CONFIG_COUNT FM_HOME=<disposable-home> FM_TEST_ONLY=<case> bash tests/fm-watch-triage.test.sh
+All six exited 0 with zero 'not ok' lines and no skip lines (tasks-axi and jq were present).
+
+=== FM_TEST_ONLY=test_due_review_preserves_external_prerequisite (exit 0) ===
+ok - due reviews survive restart, acknowledge once per date, and never release external work
+
+=== FM_TEST_ONLY=test_due_review_scan_bounds_and_failures (exit 0) ===
+ok - due-review scans are bounded, reject incomplete reads, and preserve failed acknowledgements
+
+=== FM_TEST_ONLY=test_due_review_blocker_precedes_date (exit 0) ===
+ok - unresolved and missing review blockers outrank its date until actually done
+
+=== FM_TEST_ONLY=test_due_review_only_home_needs_monitoring (exit 0) ===
+ok - a dated review alone keeps native monitoring only until handled or closed
+
+=== FM_TEST_ONLY=test_due_review_unsupported_backend_stays_idle (exit 0) ===
+fm-captain-hold: due-review projection unavailable for backend beads
+fm-captain-hold: due-review projection unavailable for backend beads
+ok - unsupported backends remain idle and report unavailability while failed markdown reads retain supervision
+
+=== FM_TEST_ONLY=test_due_review_monitoring_lock_is_bounded (exit 0) ===
+ok - dated-review monitoring bounds a live queue-lock wait and recovers after release

@@ -1,0 +1,14 @@
+Failure-propagation negative control (test-quality gate for the watcher suite).
+A disposable copy of the repository retained two real older top-level cases and
+injected a returned failed assertion into the first. The 'not ok' lines below are
+DELIBERATE INJECTED FAILURES and are the expected result of this control.
+
+=== corrected invocation (as shipped: every top-level call carries '|| exit 1') ===
+file exit=1  (the printed failure fails the suite; the second case never masks it)
+not ok - injected returned assertion failure (negative control)
+
+=== pre-correction invocation (bare top-level calls, for contrast) ===
+file exit=0  (the same printed 'not ok' was followed by a passing case and a clean exit
+- the gap the submitted correction closes; the shipped file guards all 147 calls)
+not ok - injected returned assertion failure (negative control)
+ok - classifier primitives: keyed decisions and activity phases, captain relevance, window-to-task, and overrides
