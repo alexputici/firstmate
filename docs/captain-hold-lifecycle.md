@@ -68,6 +68,20 @@ Repeat and edge cases:
 - The reason may contain parentheses, semicolons, quotes, and line breaks.
   [`bin/fm-hold-reason-lib.sh`](../bin/fm-hold-reason-lib.sh) owns the storage encoding and compatibility rules; [`bin/fm-tasks-axi.sh --help`](../bin/fm-tasks-axi.sh) owns the public read commands and output contract.
 
+### Announcing a deferred review
+
+The native watcher calls `fm-captain-hold.sh due-reviews` at its base heartbeat cadence, before status-signal exits can starve the scan.
+The command header owns structured date selection, publication receipts, and the existing queue acknowledgement contract.
+The scan uses the canonical markdown backlog projection; a different configured backend reports its unavailable projection rather than reading unrelated local records.
+Unresolved blockers take precedence over the date through the canonical fleet snapshot's `hold_bucket` classification, leaving Bearings buckets unchanged.
+The shared supervision predicate includes future dated reviews, so startup guards and native Stop recovery keep monitoring even when no worker or registered check remains.
+It stops requiring supervision for that date once its queued announcement is acknowledged; a new date restores the requirement.
+
+Keep an external prerequisite undated and hold it with kind `external`; block the work on that prerequisite and give an independent captain-held review its own date, with no dependency edge to the work.
+Answering or closing the review, deferring it again, expiry, restart, and wake acknowledgement leave the prerequisite open.
+Only recording that the external prerequisite itself completed makes the dependent work eligible.
+The watcher regression in `tests/fm-watch-triage.test.sh` exercises this pattern through the real watcher, drain, tasks backend, and captured board-answer intake, including repeated delivery.
+
 ### Answering a call (`answer`)
 
 The `answer` subcommand records the captain's exact words and resolves the call in the same act.

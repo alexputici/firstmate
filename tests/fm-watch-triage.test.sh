@@ -6605,8 +6605,279 @@ test_paused_until_that_passed_is_rechecked_before_the_cadence() {
 
 # CI's stock macOS Bash lane sets FM_TEST_ONLY to run just the bash-3.2
 # churn-deferral regression. The rest of this file is not a 3.2 snapshot suite.
+# The observer must distinguish an empty backlog from an unreadable or truncated
+# listing, and its durable cadence must survive watcher restarts.
+test_due_review_scan_bounds_and_failures() (
+  command -v tasks-axi >/dev/null 2>&1 || { pass "due scan skipped: tasks-axi unavailable"; return; }
+  local home state fakebin out pid real_jq status
+  home=$(make_case due-review-bounds); state="$home/state"; fakebin="$home/fakebin"; out="$home/watch.out"
+  mkdir -p "$home/data" "$home/config"
+  cp "$ROOT/.tasks.toml" "$home/.tasks.toml"
+  printf '## In flight\n\n## Queued\n\n## Done\n' > "$home/data/backlog.md"
+  # These homes deliberately remain local to each test subshell.
+  # shellcheck disable=SC2030,SC2031
+  export FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$home/data" FM_CONFIG_OVERRIDE="$home/config"
+  unset TASKS_AXI_FILE TASKS_AXI_BACKEND
+  "$ROOT/bin/fm-captain-hold.sh" due-reviews > "$out" || fail "empty backlog refused"
+  [ ! -s "$out" ] || fail "empty backlog announced a review"
+  "$ROOT/bin/fm-captain-hold.sh" hold sample-review --title 'Review wait' --reason 'Review progress' --until 2026-08-01 >/dev/null
+  real_jq=$(command -v jq)
+  export FM_DUE_REAL_JQ="$real_jq" FM_DUE_SCAN_LOG="$home/scan.log"
+  cat > "$fakebin/jq" <<'SH'
+#!/usr/bin/env bash
+if [ "${1:-}" = -Rn ] && [ "${FM_SNAPSHOT_NOW:-}" = 2026-08-01T00:00:00Z ]; then
+  printf 'scan\n' >> "$FM_DUE_SCAN_LOG"
+  case "${FM_DUE_PROJECTION_FAILURE:-}" in
+    unavailable) exit 1 ;;
+    incomplete)
+      printf '%s\n' '{"path":"backlog.md","present":false,"records":[]}'
+      exit 0 ;;
+  esac
+fi
+exec "$FM_DUE_REAL_JQ" "$@"
+SH
+  chmod +x "$fakebin/jq"
+  for status in unavailable incomplete; do
+    if PATH="$fakebin:$PATH" FM_DUE_PROJECTION_FAILURE="$status" FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z \
+        "$ROOT/bin/fm-captain-hold.sh" due-reviews > "$out" 2> "$home/error"; then
+      fail "$status listing was accepted as complete"
+    fi
+    [ ! -s "$state/.wake-queue" ] || fail "$status listing queued a partial result"
+  done
+  : > "$home/scan.log"
+  touch "$state/.last-due-review-scan"
+  watch_bg "$state" "$fakebin" "$out" env FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z
+  pid=$!
+  wait_poll_cycle "$state" "$pid" || fail "bounded watcher stopped"
+  wait_poll_cycle "$state" "$pid" || fail "bounded watcher stopped on second poll"
+  [ ! -s "$home/scan.log" ] || fail "backlog read on ordinary poll hot path"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "bounded watcher acknowledgement failed"
+  : > "$home/scan.log"
+  watch_bg "$state" "$fakebin" "$out" env FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z
+  pid=$!
+  wait_poll_cycle "$state" "$pid" || fail "bounded restart stopped"
+  [ ! -s "$home/scan.log" ] || fail "restart discarded review scan cadence"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "bounded restart acknowledgement failed"
+
+  # A receipt write failure cannot consume or suppress the queued review.
+  mkdir "$state/.due-review-announced"
+  mkdir "$state/.due-review-announced/sample-review.2026-08-01"
+  if FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z "$ROOT/bin/fm-captain-hold.sh" due-reviews > "$out" 2> "$home/error"; then
+    fail "invalid receipt accepted"
+  fi
+  rmdir "$state/.due-review-announced/sample-review.2026-08-01"
+  FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z "$ROOT/bin/fm-captain-hold.sh" due-reviews > "$out" || fail "scan retry failed"
+  rm "$state/.due-review-announced/sample-review.2026-08-01"
+  mkdir "$state/.due-review-announced/sample-review.2026-08-01"
+  if PATH="$fakebin:$PATH" ack_stopped_cycle "$state" > "$home/ack.out" 2> "$home/ack.err"; then
+    fail "acknowledgement discarded a wake without a receipt"
+  fi
+  assert_contains "$(cat "$state/.wake-queue")" 'due-review:sample-review:2026-08-01' "failed acknowledgement lost wake"
+  rmdir "$state/.due-review-announced/sample-review.2026-08-01"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "receipt recovery acknowledgement failed"
+  FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z "$ROOT/bin/fm-captain-hold.sh" due-reviews > "$out" || fail "post-ack scan failed"
+  [ ! -s "$out" ] || fail "acknowledged retry announced again"
+  pass "due-review scans are bounded, reject incomplete reads, and preserve failed acknowledgements"
+)
+
+# Exercise the real watcher, queue drain, tasks backend, and board-answer intake
+# together. No endpoint or visual service is started in this disposable home.
+test_due_review_preserves_external_prerequisite() (
+  command -v tasks-axi >/dev/null 2>&1 || { pass "due review skipped: tasks-axi unavailable"; return; }
+  local home state fakebin out pid shown result before after count answered
+  home=$(make_case due-review); state="$home/state"; fakebin="$home/fakebin"; out="$home/watch.out"
+  mkdir -p "$home/data" "$home/config"
+  cp "$ROOT/.tasks.toml" "$home/.tasks.toml"
+  printf '## In flight\n\n## Queued\n\n## Done\n' > "$home/data/backlog.md"
+  # These homes deliberately remain local to each test subshell.
+  # shellcheck disable=SC2030,SC2031
+  export FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$home/data" FM_CONFIG_OVERRIDE="$home/config"
+  export FM_BACKEND=tmux
+  unset TASKS_AXI_FILE TASKS_AXI_BACKEND
+  due_tasks() { (cd "$home" && tasks-axi "$@"); }
+  due_hold() { "$ROOT/bin/fm-captain-hold.sh" "$@"; }
+  assert_external_wait() {
+    shown=$(due_tasks show sample-prerequisite --full)
+    assert_contains "$shown" 'state: queued' "external prerequisite closed"
+    assert_contains "$shown" 'hold_kind: external' "external prerequisite lost its hold"
+    assert_contains "$shown" 'hold_until: "-"' "external prerequisite acquired a date"
+    shown=$(due_tasks ready)
+    assert_not_contains "$shown" 'sample-work' "review handling made work eligible"
+  }
+  due_watch() {
+    watch_bg "$state" "$fakebin" "$out" env FM_HEARTBEAT=1 FM_HEARTBEAT_MAX=1 \
+      FM_CAPTAIN_HOLD_NOW="$1"
+    pid=$!
+  }
+  due_tasks add sample-prerequisite 'External prerequisite' >/dev/null
+  due_tasks hold sample-prerequisite --kind external --reason 'Waiting for external evidence' >/dev/null
+  due_tasks add sample-work 'Work needing the prerequisite' >/dev/null
+  due_tasks block sample-work --by sample-prerequisite >/dev/null
+  due_hold hold sample-review --title 'Review the external wait, including retries' --reason 'Review progress' --until 2026-08-01 >/dev/null
+  due_hold hold sample-undated --title 'Undated review' --reason 'Review separately' >/dev/null
+  due_tasks add sample-external-dated 'Other external wait' >/dev/null
+  due_tasks hold sample-external-dated --kind external --reason 'Other wait' --until 2026-08-01 >/dev/null
+  before=$(due_tasks show sample-prerequisite --full)
+
+  # Restart before the date: neither start may announce a future review.
+  due_watch 2026-07-31T12:00:00Z
+  wait_poll_cycle "$state" "$pid" || fail "watcher stopped before date: $(cat "$out")"
+  [ ! -s "$state/.wake-queue" ] || fail "future review announced"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "restart acknowledgement failed"
+  due_watch 2026-07-31T12:00:00Z
+  wait_poll_cycle "$state" "$pid" || fail "restart stopped before date"
+  [ ! -s "$state/.wake-queue" ] || fail "restart announced future review"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "restart acknowledgement failed"
+  assert_external_wait
+
+  due_watch 2026-08-01T12:00:00Z
+  wait_for_exit "$pid" 200 || fail "due review did not wake the watcher: $(cat "$out")"
+  assert_contains "$(cat "$out")" 'check: due-review sample-review 2026-08-01' "missing due announcement"
+  count=$(awk -F '\t' '$4 == "due-review:sample-review:2026-08-01" {n++} END {print n+0}' "$state/.wake-queue")
+  [ "$count" = 1 ] || fail "expected one due-date wake"
+  assert_not_contains "$(cat "$state/.wake-queue")" 'sample-undated' "undated review announced"
+  assert_not_contains "$(cat "$state/.wake-queue")" 'sample-external-dated' "external hold announced as review"
+  assert_external_wait
+
+  # Presenting is not handling: a restart and repeated drains retain the row.
+  PATH="$fakebin:$PATH" "$DRAIN" > "$home/drain-one" 2> "$home/drain.err"
+  due_watch 2026-08-02T12:00:00Z
+  wait_poll_cycle "$state" "$pid" || fail "handling successor failed to supervise"
+  reap "$pid"
+  PATH="$fakebin:$PATH" "$DRAIN" > "$home/drain-two" 2> "$home/drain.err"
+  assert_contains "$(cat "$home/drain-one")" 'due-review sample-review 2026-08-01' "first presentation missing"
+  assert_contains "$(cat "$home/drain-two")" 'due-review sample-review 2026-08-01' "restart presentation missing"
+  count=$(awk -F '\t' '$4 == "due-review:sample-review:2026-08-01" {n++} END {print n+0}' "$state/.wake-queue")
+  [ "$count" = 1 ] || fail "restart duplicated pending review"
+  # Simulate a publisher death after enqueue but before its receipt. The ack
+  # must complete publication before it consumes the pending row.
+  rm "$state/.due-review-announced/sample-review.2026-08-01"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "could not acknowledge review"
+  assert_external_wait
+
+  due_watch 2026-08-02T12:00:00Z
+  wait_poll_cycle "$state" "$pid" || fail "acknowledged date fired again: $(cat "$out")"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "restart acknowledgement failed"
+  [ ! -s "$state/.wake-queue" ] || fail "acknowledged review requeued"
+
+  # Deferring the independent review schedules one more announcement only.
+  due_hold hold sample-review --reason 'Still waiting; review again' --until 2026-08-03 >/dev/null
+  assert_external_wait
+  due_watch 2026-08-02T12:00:00Z
+  wait_poll_cycle "$state" "$pid" || fail "new future date fired early"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "restart acknowledgement failed"
+  due_watch 2026-08-03T12:00:00Z
+  wait_for_exit "$pid" 200 || fail "new review date did not announce"
+  assert_contains "$(cat "$out")" 'due-review sample-review 2026-08-03' "new date missing"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "new date acknowledgement failed"
+  assert_external_wait
+
+  # A captured board answer goes through the adapter and the same keyed intake
+  # as production, including an exact delivery retry. Closing this review is
+  # deliberately separate from resolving the external prerequisite.
+  result="$home/board.result"
+  cat > "$result" <<'RESULT'
+session:
+  file: /review.html
+  status: feedback
+  session_ended: true
+  ended_by: user
+prompts[1]{uid,prompt,selector,tag,text}:
+  "1","Wait review\n\nContext data:\n{\n  \"schema\": \"fm-bearings-answer.v1\",\n  \"question\": \"sample-review\",\n  \"selection\": \"still-waiting\",\n  \"note\": \"I followed up; still waiting on the external team.\"\n}","section#call > form",choice,"Wait review"
+RESULT
+  "$ROOT/bin/fm-procevent-lavish.sh" answers "$result" > "$home/answers" || fail "board adapter failed"
+  assert_contains "$(cat "$home/answers")" 'sample-review' "board answer missing"
+  due_hold answers --source 'synthetic board' < "$home/answers" > "$home/answer.out" || fail "keyed answer failed"
+  assert_external_wait
+  answered=$(due_tasks show sample-review --full)
+  due_hold answers --source 'synthetic board' < "$home/answers" > "$home/retry.out" || fail "answer retry failed"
+  assert_external_wait
+  [ "$answered" = "$(due_tasks show sample-review --full)" ] || fail "answer replay duplicated the resolution"
+  assert_contains "$answered" 'state: done' "review did not close"
+  after=$(due_tasks show sample-prerequisite --full)
+  [ "$before" = "$after" ] || fail "review lifecycle mutated the external prerequisite"
+  due_watch 2026-08-04T12:00:00Z
+  wait_poll_cycle "$state" "$pid" || fail "closed review reannounced"
+  reap "$pid"
+  PATH="$fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "restart acknowledgement failed"
+  due_tasks "done" sample-prerequisite >/dev/null
+  assert_contains "$(due_tasks ready)" 'sample-work' "clearing prerequisite did not make work eligible"
+  pass "due reviews survive restart, acknowledge once per date, and never release external work"
+)
+
+# An independent review can itself have a prerequisite. Backend blocker
+# resolution, including a missing blocker, must precede date notification.
+test_due_review_blocker_precedes_date() (
+  command -v tasks-axi >/dev/null 2>&1 || { pass "due blockers skipped: tasks-axi unavailable"; return; }
+  local home state out
+  home=$(make_case due-review-blocker); state="$home/state"
+  mkdir -p "$home/data" "$home/config"
+  cp "$ROOT/.tasks.toml" "$home/.tasks.toml"
+  printf '## In flight\n\n## Queued\n\n## Done\n' > "$home/data/backlog.md"
+  # shellcheck disable=SC2030,SC2031
+  export FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$home/data" FM_CONFIG_OVERRIDE="$home/config"
+  export FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z
+  (cd "$home" && tasks-axi add sample-prerequisite 'Review prerequisite' >/dev/null)
+  "$ROOT/bin/fm-captain-hold.sh" hold sample-review --title 'Blocked review' --reason 'Review progress' --until 2026-08-01 >/dev/null
+  (cd "$home" && tasks-axi block sample-review --by sample-prerequisite >/dev/null)
+  out=$("$ROOT/bin/fm-captain-hold.sh" due-reviews) || fail "blocked review scan failed"
+  [ -z "$out" ] && [ ! -s "$state/.wake-queue" ] || fail "blocked review announced when date arrived"
+  # Represent a missing prerequisite through a synthetic restored backlog.
+  cp "$home/data/backlog.md" "$home/saved-backlog"
+  sed '/^- \[ \] sample-prerequisite /d' "$home/saved-backlog" > "$home/data/backlog.md"
+  if (cd "$home" && tasks-axi show sample-prerequisite >/dev/null 2>&1); then fail "fixture did not remove prerequisite"; fi
+  out=$("$ROOT/bin/fm-captain-hold.sh" due-reviews) || fail "missing blocker scan failed"
+  [ -z "$out" ] && [ ! -s "$state/.wake-queue" ] || fail "missing blocker was treated as resolved"
+  cp "$home/saved-backlog" "$home/data/backlog.md"
+  (cd "$home" && tasks-axi "done" sample-prerequisite >/dev/null)
+  out=$("$ROOT/bin/fm-captain-hold.sh" due-reviews) || fail "resolved blocker scan failed"
+  assert_contains "$out" 'check: due-review sample-review 2026-08-01' "resolved blocker did not permit the review announcement"
+  pass "unresolved and missing review blockers outrank its date until actually done"
+)
+
+# This is the shared monitoring predicate used by startup, Stop and restart.
+# The hook integration has a separate fixture in fm-claude-stop-autoarm.test.sh.
+test_due_review_only_home_needs_monitoring() (
+  command -v tasks-axi >/dev/null 2>&1 || { pass "due monitoring skipped: tasks-axi unavailable"; return; }
+  local home state
+  home=$(make_case due-review-only); state="$home/state"
+  mkdir -p "$home/data" "$home/config"
+  cp "$ROOT/.tasks.toml" "$home/.tasks.toml"
+  printf '## In flight\n\n## Queued\n\n## Done\n' > "$home/data/backlog.md"
+  # shellcheck disable=SC2030,SC2031
+  export FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_DATA_OVERRIDE="$home/data" FM_CONFIG_OVERRIDE="$home/config"
+  # shellcheck source=/dev/null
+  . "$ROOT/bin/fm-supervision-lib.sh"
+  if fm_supervision_needed "$state"; then fail "empty home needs monitoring"; fi
+  "$ROOT/bin/fm-captain-hold.sh" hold sample-review --title 'Future review' --reason 'Review progress' --until 2099-01-01 >/dev/null
+  fm_supervision_needed "$state" || fail "date-only home does not request monitoring"
+  # Session start reaches this same native guard through its wake drain.
+  FM_GUARD_READ_ONLY=1 "$ROOT/bin/fm-guard.sh" > "$home/startup-guard" 2>&1
+  assert_contains "$(cat "$home/startup-guard")" 'Dated review monitoring' "startup guard missed the date-only monitoring need"
+  [ "$FM_SUP_IN_FLIGHT" = 0 ] && [ "$FM_SUP_SOURCES" = 0 ] && [ "$FM_SUP_CHECKS" = 0 ] \
+    || fail "test accidentally provided another monitoring reason"
+  FM_CAPTAIN_HOLD_NOW=2099-01-01T12:00:00Z "$ROOT/bin/fm-captain-hold.sh" due-reviews >/dev/null || fail "due scan failed"
+  fm_supervision_needed "$state" || fail "unhandled date announcement lost monitoring"
+  PATH="$home/fakebin:$PATH" ack_stopped_cycle "$state" >/dev/null || fail "date-only acknowledgement failed"
+  if fm_supervision_needed "$state"; then fail "handled date unnecessarily keeps monitoring"; fi
+  "$ROOT/bin/fm-captain-hold.sh" hold sample-review --reason 'Revisit again' --until 2099-01-02 >/dev/null
+  fm_supervision_needed "$state" || fail "new date did not restore monitoring"
+  printf 'Review complete.\n' > "$home/answer"
+  "$ROOT/bin/fm-captain-hold.sh" answer sample-review --decision-file "$home/answer" >/dev/null || fail "review close failed"
+  if fm_supervision_needed "$state"; then fail "closed review keeps monitoring"; fi
+  "$ROOT/bin/fm-captain-hold.sh" hold sample-undated --title 'Undated review' --reason 'No scheduled review' >/dev/null
+  if fm_supervision_needed "$state"; then fail "undated review starts extra monitoring"; fi
+  pass "a dated review alone keeps native monitoring only until handled or closed"
+)
+
 if [ -n "${FM_TEST_ONLY:-}" ]; then
-  "$FM_TEST_ONLY"
+  "$FM_TEST_ONLY" || exit 1
   exit 0
 fi
 
@@ -6617,6 +6888,7 @@ test_status_span_closure_from_an_offset
 test_malformed_seen_signature_reads_the_whole_log
 test_stale_is_terminal_classifier
 test_classifier_primitives
+
 test_unrecognized_status_prefix_is_visible
 test_crew_is_provably_working_classifier
 test_status_is_paused_classifier
@@ -6751,3 +7023,10 @@ test_captain_held_rechecked_under_a_quiet_record
 test_paused_until_near_future_is_quiet_before_the_cadence
 test_paused_until_wrong_year_is_bounded_by_the_cadence
 test_paused_until_that_passed_is_rechecked_before_the_cadence
+
+test_due_review_preserves_external_prerequisite || exit 1
+
+test_due_review_scan_bounds_and_failures || exit 1
+
+test_due_review_blocker_precedes_date || exit 1
+test_due_review_only_home_needs_monitoring || exit 1
