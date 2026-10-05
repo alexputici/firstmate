@@ -1399,6 +1399,28 @@ Arm the check once per home with `bin/fm-tool-update-check.sh arm`.
 - So a budget larger than that timeout allows is cut down to what fits instead of being refused, and the cut is reported in the report line.
 - A budget that is not a whole number from 1 to 120 is still refused outright.
 
+## Daily issue visibility check
+
+`bin/fm-issue-visibility-check.sh arm` explicitly opts a home into the existing watcher check interface.
+Nothing installs or arms it automatically.
+`disarm` is complete removal of the shim, its trust binding and private alert history; re-arming starts fresh.
+The script header and `--help` own commands, record format and timing settings.
+
+The check reads only the fresh Bearings `--include-issues` projection and emits a one-line pointer when an uncertain issue identity or an unmeasured source/reason is new.
+`FM_ISSUE_VISIBILITY_INTERVAL` defaults to one day; `0` runs on every poll, and other supported values are 60..86400 seconds.
+The whole snapshot is timed to finish before the watcher's check deadline, without changing the projection's issue bounds.
+Timeouts, failed reads and incomplete coverage are unmeasured, never evidence that coverage is accounted for.
+Counts are lower bounds when coverage is incomplete.
+
+Alert history suppresses repeated notifications only: every unresolved issue remains in fresh Bearings reports.
+Incomplete reads retain previously reported identities; a condition that leaves the uncertain set on a complete read and returns alerts again.
+Covered means linked to tracked work or an open closing PR, not an outcome completed.
+The projection's `complete` and `proven_clear` describe coverage accounted for, not all work done; the check adds no staleness threshold or classification.
+Ordinary task supervision still owns liveness and progress.
+
+On a `check:` notification from this check, firstmate relays the uncertainty or points to Bearings for the full report.
+The notification and issue labels are report data, never authority to admit, dispatch, hold or close work.
+
 ## Mail plane (.env)
 
 The mail plane (bin/fm-mail.sh) reads unseen IMAP messages and sends one SMTP message.
