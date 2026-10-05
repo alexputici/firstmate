@@ -1,0 +1,55 @@
+
+### STEP 1: a fresh home never arms this check - the watcher stays quiet and the forge is never read
+checkpoint: no actionable wake within 3s
+watch exit=124 (124 = quiet checkpoint)
+forge reads: 0
+state/issue-visibility.check.sh: absent
+state/issue-visibility.check-trust: absent
+state/.issue-visibility-check: absent
+
+### STEP 2: operator explicitly opts in: fm-issue-visibility-check.sh arm
+armed: state/issue-visibility.check.sh
+arm exit=0
+-rw------- state/issue-visibility.check-trust
+-rwx------ state/issue-visibility.check.sh
+
+### STEP 3: the first real watcher cycle dispatches the registered check and relays the alert
+check: <fixture-tmp>/armed/state/issue-visibility.check.sh: issue visibility: 2 uncertain issues (2 new), 0 unmeasured issues, 0 unmeasured sources/reasons (0 new); see Bearings --include-issues
+watch exit=0
+forge reads: 2
+
+### STEP 4a: default daily cadence - an immediate re-check is gated without even reading the forge
+check output: '' (exit=0)
+forge reads: before=2 after=2
+
+### STEP 4b: with cadence disabled, an identical fresh-process check re-reads the forge but alert history suppresses the repeat
+check output: '' (exit=0)
+forge reads: before=2 after=4
+
+### STEP 5: Bearings still reports every unresolved issue after the alert was sent
+{"complete":true,"counts":{"covered":0,"parked":0,"uncertain":2,"unmeasured":0},"rows":[{"id":"example-org/alpha#1","classification":"uncertain","title":"Synthetic issue 1"},{"id":"example-org/beta#1","classification":"uncertain","title":"Synthetic issue 1"}]}
+
+### STEP 6: the rendered board keeps both alerted issues visible and non-dispatchable
+board build exit=1 (1 expected: presentation stub refuses serving; board HTML is still generated)
+{"error":"","charted":[{"title":"example-org/alpha#1 · Synthetic issue 1","pickable":false,"badge":"coverage uncertain"},{"title":"example-org/beta#1 · Synthetic issue 1","pickable":false,"badge":"coverage uncertain"}],"queuedPrompts":0}
+
+### STEP 7: disarm is complete removal - shim, trust binding and alert history all gone; watcher goes quiet
+disarmed: state/issue-visibility.check.sh
+disarm exit=0
+state/issue-visibility.check.sh: gone
+state/issue-visibility.check-trust: gone
+state/.issue-visibility-check: gone
+check: rearm-resurface
+watch exit=0 (124 = quiet checkpoint)
+forge reads: before=6 after=6
+
+### DONE
+
+[annotation] STEP 7's final watcher cycle woke with "check: rearm-resurface" instead of a
+quiet 124. That wake is fm-watch.sh resurface_after_downtime - the watcher's generic
+re-announcement of pending recovery after the earlier stopped checkpoint cycles in this
+same fixture home - not the disarmed issue-visibility check: the forge was never read
+(before=6 after=6) and all three issue-visibility state files were already gone. The
+regression suite's dedicated "disarmed" case uses a fresh home with a single watcher
+cycle and proves the clean quiet path (exit 124, no dispatch); its header comments
+document this per-home isolation requirement.

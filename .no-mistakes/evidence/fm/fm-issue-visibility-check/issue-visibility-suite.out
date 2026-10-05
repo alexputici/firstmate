@@ -1,0 +1,8 @@
+ok - first alert, restart suppression, new issues, labels, report persistence and read-only task records
+ok - linked work stays in the report and returning uncertainty alerts again
+ok - auth, rate limit, permission, truncation, byte/row/budget bounds retain history; new reasons alert
+ok - daily cadence is gated without polling and coverage wording does not imply completed work
+ok - whole-snapshot timeout, nonzero exit and malformed output alert without erasing history
+ok - real watcher dispatch, trust rejection, complete removal and fresh re-arm
+ok - default snapshot issue bounds with slow forge alert within the 30-second watcher deadline
+exit=0
