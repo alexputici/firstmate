@@ -6625,7 +6625,7 @@ test_due_review_scan_bounds_and_failures() (
   export FM_DUE_REAL_JQ="$real_jq" FM_DUE_SCAN_LOG="$home/scan.log"
   cat > "$fakebin/jq" <<'SH'
 #!/usr/bin/env bash
-if [ "${1:-}" = -Rn ] && [ "${FM_SNAPSHOT_NOW:-}" = 2026-08-01T00:00:00Z ]; then
+if [ "${1:-}" = -Rn ]; then
   printf 'scan\n' >> "$FM_DUE_SCAN_LOG"
   case "${FM_DUE_PROJECTION_FAILURE:-}" in
     unavailable) exit 1 ;;
@@ -6644,6 +6644,10 @@ SH
     fi
     [ ! -s "$state/.wake-queue" ] || fail "$status listing queued a partial result"
   done
+  # Establish a current native summary and slow-check cadence before observing
+  # ordinary polls. An absent summary intentionally causes a startup refresh.
+  "$ROOT/bin/fm-home-summary-refresh.sh" >/dev/null || fail "summary preparation failed"
+  touch "$state/.last-check"
   : > "$home/scan.log"
   touch "$state/.last-due-review-scan"
   watch_bg "$state" "$fakebin" "$out" env FM_CAPTAIN_HOLD_NOW=2026-08-01T12:00:00Z
