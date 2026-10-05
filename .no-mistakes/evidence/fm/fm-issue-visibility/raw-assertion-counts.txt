@@ -1,0 +1,14 @@
+Raw-assertion inspection of the four affected suites (bin/fm-test-run.sh, green gate run)
+Judged by raw stdout/stderr lines, not exit status alone.
+
+suite                                        ok   not_ok   exit  gate_skip
+fm-bearings-snapshot.test.sh                 64        0      0      false
+fm-fleet-snapshot-view.test.sh               18        0      0      false
+fm-bearings-board.test.sh                    19        0      0      false
+fm-bearings-board-render.test.sh             11        0      0      false
+
+Failure-propagation probe (one assertion deliberately flipped per suite, then restored):
+  fm-bearings-snapshot.test.sh     -> printed "not ok", suite exit=1
+  fm-bearings-board.test.sh        -> printed "not ok", suite exit=1
+  fm-bearings-board-render.test.sh -> printed "not ok", suite exit=1
+  runner overall exit=1; a printed failed assertion cannot pass the gate

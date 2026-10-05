@@ -1,0 +1,1244 @@
+{
+  "schema": "fm-issue-visibility.v1",
+  "known": 2,
+  "checked": 2,
+  "complete": true,
+  "proven_clear": false,
+  "unmeasured_homes": 0,
+  "homes": [
+    {
+      "owner": "(main)",
+      "measured": true,
+      "projects_omitted": 0,
+      "tasks_omitted": 0,
+      "links_omitted": 0,
+      "unresolved_projects": []
+    }
+  ],
+  "counts": {
+    "covered": 5,
+    "parked": 2,
+    "uncertain": 31,
+    "unmeasured": 0
+  },
+  "rows": [
+    {
+      "id": "example-org/alpha#21",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/21",
+      "title": "Synthetic issue 21",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 13,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [
+        {
+          "url": "https://github.com/example-org/alpha/pull/81",
+          "state": "MERGED",
+          "updatedAt": "2026-01-02T00:00:00Z"
+        }
+      ],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 13,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#27",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/27",
+      "title": "Synthetic issue 27",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#28",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/28",
+      "title": "Synthetic issue 28",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#29",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/29",
+      "title": "Synthetic issue 29",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#30",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/30",
+      "title": "Synthetic issue 30",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#31",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/31",
+      "title": "Synthetic issue 31",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#32",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/32",
+      "title": "Synthetic issue 32",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#33",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/33",
+      "title": "Synthetic issue 33",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#34",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/34",
+      "title": "Synthetic issue 34",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#35",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/35",
+      "title": "Synthetic issue 35",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#36",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/36",
+      "title": "Synthetic issue 36",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#37",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/37",
+      "title": "Synthetic issue 37",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#38",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/38",
+      "title": "Synthetic issue 38",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#39",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/39",
+      "title": "Synthetic issue 39",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/alpha/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#22",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/22",
+      "title": "Synthetic issue 22",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [
+        {
+          "id": "old-link",
+          "owner": "(main)"
+        }
+      ],
+      "completed_tasks_omitted": 0,
+      "assignees": [
+        "synthetic-owner"
+      ],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#23",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/23",
+      "title": "Synthetic issue 23",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "covered",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [
+        {
+          "url": "https://github.com/example-org/alpha/pull/82",
+          "state": "OPEN",
+          "updatedAt": "2026-01-02T00:00:00Z"
+        }
+      ],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#24",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/24",
+      "title": "Synthetic issue 24",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "covered",
+      "tasks": [
+        {
+          "id": "active-link",
+          "owner": "(main)",
+          "state": "in_flight",
+          "parked": false,
+          "hold_kind": null,
+          "hold_reason": null,
+          "hold_until": null,
+          "last_activity": "2026-01-01"
+        }
+      ],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#25",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/25",
+      "title": "Synthetic issue 25",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/alpha#26",
+      "repo": "example-org/alpha",
+      "url": "https://github.com/example-org/alpha/issues/26",
+      "title": "Synthetic issue 26",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "covered",
+      "tasks": [
+        {
+          "id": "body-link",
+          "owner": "(main)",
+          "state": "queued",
+          "parked": false,
+          "hold_kind": null,
+          "hold_reason": null,
+          "hold_until": null,
+          "last_activity": null
+        }
+      ],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#21",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/21",
+      "title": "Synthetic issue 21",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 13,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [
+        {
+          "url": "https://github.com/example-org/beta/pull/81",
+          "state": "MERGED",
+          "updatedAt": "2026-01-02T00:00:00Z"
+        }
+      ],
+      "children": {
+        "covered": 1,
+        "parked": 0,
+        "uncertain": 12,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#27",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/27",
+      "title": "Synthetic issue 27",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "covered",
+      "tasks": [
+        {
+          "id": "gated-link",
+          "owner": "(main)",
+          "state": "queued",
+          "parked": false,
+          "hold_kind": "captain",
+          "hold_reason": "captain go needed",
+          "hold_until": null,
+          "last_activity": null
+        }
+      ],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#28",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/28",
+      "title": "Synthetic issue 28",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#29",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/29",
+      "title": "Synthetic issue 29",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#30",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/30",
+      "title": "Synthetic issue 30",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#31",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/31",
+      "title": "Synthetic issue 31",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#32",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/32",
+      "title": "Synthetic issue 32",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#33",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/33",
+      "title": "Synthetic issue 33",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#34",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/34",
+      "title": "Synthetic issue 34",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#35",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/35",
+      "title": "Synthetic issue 35",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#36",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/36",
+      "title": "Synthetic issue 36",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#37",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/37",
+      "title": "Synthetic issue 37",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#38",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/38",
+      "title": "Synthetic issue 38",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#39",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/39",
+      "title": "Synthetic issue 39",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": "https://github.com/example-org/beta/issues/21",
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#22",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/22",
+      "title": "Synthetic issue 22",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [
+        "synthetic-owner"
+      ],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#23",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/23",
+      "title": "Synthetic issue 23",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "covered",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [
+        {
+          "url": "https://github.com/example-org/beta/pull/82",
+          "state": "OPEN",
+          "updatedAt": "2026-01-02T00:00:00Z"
+        }
+      ],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#24",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/24",
+      "title": "Synthetic issue 24",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "uncertain",
+      "tasks": [],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#25",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/25",
+      "title": "Synthetic issue 25",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "parked",
+      "tasks": [
+        {
+          "id": "axi-parked",
+          "owner": "(main)",
+          "state": "queued",
+          "parked": true,
+          "hold_kind": "parked",
+          "hold_reason": "shelved for now",
+          "hold_until": null,
+          "last_activity": null
+        }
+      ],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    },
+    {
+      "id": "example-org/beta#26",
+      "repo": "example-org/beta",
+      "url": "https://github.com/example-org/beta/issues/26",
+      "title": "Synthetic issue 26",
+      "updated_at": "2026-01-02T00:00:00Z",
+      "parent": null,
+      "child_scope": {
+        "total": 0,
+        "completed": 0
+      },
+      "classification": "parked",
+      "tasks": [
+        {
+          "id": "axi-future",
+          "owner": "(main)",
+          "state": "queued",
+          "parked": true,
+          "hold_kind": "future",
+          "hold_reason": "revisit next quarter",
+          "hold_until": "2099-01-01",
+          "last_activity": null
+        }
+      ],
+      "tasks_omitted": 0,
+      "completed_tasks": [],
+      "completed_tasks_omitted": 0,
+      "assignees": [],
+      "labels": [
+        "ready-to-build"
+      ],
+      "pull_requests": [],
+      "referenced_prs": [],
+      "children": {
+        "covered": 0,
+        "parked": 0,
+        "uncertain": 0,
+        "unmeasured": 0
+      }
+    }
+  ],
+  "rows_omitted": 0,
+  "repos": [
+    {
+      "repo": "example-org/alpha",
+      "complete": true,
+      "reason": null,
+      "counts": {
+        "covered": 3,
+        "parked": 0,
+        "uncertain": 16,
+        "unmeasured": 0
+      },
+      "measured": true
+    },
+    {
+      "repo": "example-org/beta",
+      "complete": true,
+      "reason": null,
+      "counts": {
+        "covered": 2,
+        "parked": 2,
+        "uncertain": 15,
+        "unmeasured": 0
+      },
+      "measured": true
+    }
+  ],
+  "omitted": []
+}

@@ -1,0 +1,97 @@
+{
+  "schema": "fm-issue-sources.v1",
+  "projects": {
+    "complete": false,
+    "known": 3,
+    "omitted": 0,
+    "records": [
+      {
+        "name": "alpha",
+        "repo": "example-org/alpha",
+        "reason": null
+      },
+      {
+        "name": "beta",
+        "repo": "example-org/beta",
+        "reason": null
+      },
+      {
+        "name": "gamma",
+        "repo": null,
+        "reason": "registered path is not a repository root"
+      }
+    ]
+  },
+  "tasks": {
+    "complete": true,
+    "known": 5,
+    "omitted": 0,
+    "records": [
+      {
+        "id": "active-link",
+        "repo": "alpha",
+        "state": "in_flight",
+        "hold_kind": null,
+        "hold_reason": null,
+        "hold_until": null,
+        "last_activity": "2026-01-01",
+        "issue_urls": [
+          "https://github.com/example-org/alpha/issues/24"
+        ],
+        "omitted_links": 0
+      },
+      {
+        "id": "axi-parked",
+        "repo": "beta",
+        "state": "queued",
+        "hold_kind": "parked",
+        "hold_reason": "shelved for now",
+        "hold_until": null,
+        "last_activity": null,
+        "issue_urls": [
+          "https://github.com/example-org/beta/issues/25"
+        ],
+        "omitted_links": 0
+      },
+      {
+        "id": "axi-future",
+        "repo": "beta",
+        "state": "queued",
+        "hold_kind": "future",
+        "hold_reason": "revisit next quarter",
+        "hold_until": "2099-01-01",
+        "last_activity": null,
+        "issue_urls": [
+          "https://github.com/example-org/beta/issues/26"
+        ],
+        "omitted_links": 0
+      },
+      {
+        "id": "gated-link",
+        "repo": "beta",
+        "state": "queued",
+        "hold_kind": "captain",
+        "hold_reason": "captain go needed",
+        "hold_until": null,
+        "last_activity": null,
+        "issue_urls": [
+          "https://github.com/example-org/beta/issues/27"
+        ],
+        "omitted_links": 0
+      },
+      {
+        "id": "body-link",
+        "repo": "alpha",
+        "state": "queued",
+        "hold_kind": null,
+        "hold_reason": null,
+        "hold_until": null,
+        "last_activity": null,
+        "issue_urls": [
+          "https://github.com/example-org/alpha/issues/26"
+        ],
+        "omitted_links": 0
+      }
+    ]
+  }
+}
