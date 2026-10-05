@@ -752,7 +752,8 @@ issue_visibility_json() (
       + [.secondmate_current.records[]? | {owner:.id,sources:.issue_sources,
           current:(.provenance.selected=="structured-home" and .freshness.status=="fresh"
             and .freshness.age_seconds != null and .freshness.age_seconds >= 0 and .freshness.age_seconds <= $max_age)}])
-    | map(. + {usable:(.current and (try (.sources|sources_valid) catch false))})
+    | map((try (.sources|sources_valid) catch false) as $valid
+        | . + {usable:(.current and $valid),sources:(if $valid then .sources else null end)})
     | {homes:.,repos:([.[] | select(.usable) | .sources.projects.records[] | .repo // empty | ascii_downcase] | unique)}
   ' "$local_dir/snapshot.json" > "$local_dir/sources.json"
   : > "$local_dir/repos.jsonl"

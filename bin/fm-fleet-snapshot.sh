@@ -2009,13 +2009,15 @@ issue_sources_json() {
     complete=false
     names='[]'
   else
-    window=$(fm_run_timed "$FM_SNAPSHOT_REGISTRY_TIMEOUT" head -c "$((FM_SNAPSHOT_REGISTRY_BYTES + 1))" "$registry") || window=
+    window=$(fm_run_timed "$FM_SNAPSHOT_REGISTRY_TIMEOUT" head -c "$((FM_SNAPSHOT_REGISTRY_BYTES + 1))" "$registry" && printf '\036') || window=
+    window=${window%$'\036'}
     if [ -z "$window" ]; then complete=false; fi
     if [ "$(printf '%s' "$window" | LC_ALL=C wc -c | tr -d ' ')" -gt "$FM_SNAPSHOT_REGISTRY_BYTES" ]; then
       complete=false
       # Never interpret a partially read last record as a valid project.
       window=${window%$'\n'*}
     fi
+    window=${window%$'\n'}
     names=$(printf '%s\n' "$window" | jq -Rn --argjson cap "$FM_SNAPSHOT_REGISTRY_LINES" '
       [inputs] as $rows
       | {truncated:($rows|length > $cap), records:[$rows[:$cap][]
@@ -2050,7 +2052,7 @@ issue_sources_json() {
             fi
           fi
           repo=$(printf '%s' "$origin" | sed -nE 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(\.git)?/?$#\2#p' | sed 's/\.git$//')
-          [ -n "$repo" ] || reason='GitHub origin unavailable or unsupported'
+          [ -n "$repo" ] || [ -n "$reason" ] || reason='GitHub origin unavailable or unsupported'
         fi ;;
     esac
     [ -z "$reason" ] || complete=false

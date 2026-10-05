@@ -3416,6 +3416,37 @@ issue_snapshot() {
     bash "$BEARINGS" --json --include-issues
 }
 
+issue_home_summary() {
+  PATH="$1/fakebin:$PATH" NET_LOG="$1/network.log" FM_HOME="$1" \
+    FM_STATE_OVERRIDE="$1/state" FM_DATA_OVERRIDE="$1/data" FM_CONFIG_OVERRIDE="$1/config" \
+    FM_PROJECTS_OVERRIDE="$1/projects" \
+    bash "$ROOT/bin/fm-fleet-snapshot.sh" --secondmate-home-summary
+}
+
+test_issue_sources_registry_boundary_and_unresolved_reasons() {
+  local home cap first out
+  home=$(issue_home issue-registry-bounds)
+  mkdir -p "$home/projects/gamma"
+  printf -- '- gamma [direct-PR] - Synthetic non-root project (added 2026-01-01)\n' >> "$home/data/projects.md"
+  out=$(issue_home_summary "$home") || fail 'registry reason summary failed'
+  printf '%s' "$out" | jq -e '
+    .issue_sources.projects | .complete==false
+    and (.records|map(select(.name=="gamma"))[0]
+      | .repo==null and .reason=="registered path is not a repository root")
+    and (.records|map(select(.name=="alpha"))[0] | .repo=="example-org/alpha" and .reason==null)' >/dev/null \
+    || fail "non-root registered path lost its specific reason: $out"
+  cap=120
+  first='- alpha [direct-PR] - Synthetic boundary project'
+  while [ "${#first}" -lt "$cap" ]; do first="$first."; done
+  printf '%s\n- beta [direct-PR] - Beyond the byte bound\n' "$first" > "$home/data/projects.md"
+  out=$(FM_SNAPSHOT_REGISTRY_BYTES="$cap" issue_home_summary "$home") || fail 'registry boundary summary failed'
+  printf '%s' "$out" | jq -e '
+    .issue_sources.projects
+    | .complete==false and .known==1 and (.records|map(.name))==["alpha"]' >/dev/null \
+    || fail "newline-aligned registry byte truncation claimed a complete read: $out"
+  pass 'registry byte-boundary truncation and non-root origins stay disclosed with exact reasons'
+}
+
 test_issue_visibility_classes_grouping_and_repeatability() {
   local home out again canonical
   home=$(issue_home issue-classes)
@@ -3519,6 +3550,21 @@ EOF
   out=$(FM_SSH_BIN="$home/fakebin/fake-ssh" FM_TEST_LEDGER_CALL_LOG="$home/ledger.log" issue_snapshot "$home") || fail 'legacy summary projection failed'
   printf '%s' "$out" | jq -e '.issue_visibility | .complete==false and .proven_clear==false and .unmeasured_homes==1 and all(.rows[];.classification=="unmeasured")' >/dev/null \
     || fail 'legacy home summary became uncovered or all-clear'
+  printf '%s' "$sources" | jq '.issue_sources="bogus"' > "$mate/state/home-summary.json"
+  out=$(FM_SSH_BIN="$home/fakebin/fake-ssh" FM_TEST_LEDGER_CALL_LOG="$home/ledger.log" issue_snapshot "$home") \
+    || fail 'malformed remote issue_sources aborted the issue projection'
+  printf '%s' "$out" | jq -e '
+    .issue_visibility | .complete==false and .proven_clear==false and .unmeasured_homes==1
+    and all(.rows[];.classification=="unmeasured")
+    and (.homes|map(select(.owner=="issue-mate"))[0]
+      | .measured==false and .projects_omitted==null and .tasks_omitted==null
+        and .links_omitted==0 and .unresolved_projects==[])' >/dev/null \
+    || fail "malformed remote issue_sources was not disclosed as unmeasured: $out"
+  printf '%s' "$sources" | jq '.issue_sources.projects="bogus"' > "$mate/state/home-summary.json"
+  out=$(FM_SSH_BIN="$home/fakebin/fake-ssh" FM_TEST_LEDGER_CALL_LOG="$home/ledger.log" issue_snapshot "$home") \
+    || fail 'malformed nested issue_sources fields aborted the issue projection'
+  printf '%s' "$out" | jq -e '.issue_visibility | .complete==false and .proven_clear==false and .unmeasured_homes==1 and all(.rows[];.classification=="unmeasured")' >/dev/null \
+    || fail "malformed nested issue_sources fields were not disclosed as unmeasured: $out"
   rm "$home/data/secondmates.md"
   { printf '## Queued\n'; printf -- '- [ ] scope-a - One https://github.com/example-org/alpha/issues/24 (kind: ship)\n- [ ] scope-b - Two https://github.com/example-org/alpha/issues/25 (kind: ship)\n'; } > "$home/data/backlog.md"
   out=$(FM_SNAPSHOT_ISSUE_TASKS=1 issue_snapshot "$home") || fail 'source bound projection failed'
@@ -3530,6 +3576,7 @@ test_issue_visibility_secondmate_and_source_bounds
 
 test_issue_visibility_classes_grouping_and_repeatability
 test_issue_visibility_incomplete_is_unmeasured
+test_issue_sources_registry_boundary_and_unresolved_reasons
 
 test_parent_evidence_reconciles_by_verb_and_key
 test_nonprogressing_child_states_are_explicit
