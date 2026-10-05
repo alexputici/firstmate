@@ -276,6 +276,7 @@ test_issue_rows_are_visible_and_never_pickable() {
   ]')
   printf '%s' "$out" | jq -e '.error=="" and (.charted|length)==3
     and all(.charted[:2][];.pickable==false)
+    and all(.charted[:2][];.link.target=="_blank" and .link.rel=="noopener")
     and (.queuedPrompts|length)==1 and .queuedPrompts[0].data.answer=="filed-task"
     and .charted[0].badges[0].text=="coverage uncertain"
     and .charted[1].badges[0].text=="unmeasured"' >/dev/null || fail "issue rows failed rendering: $out"

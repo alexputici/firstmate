@@ -109,8 +109,12 @@ const rowsOf = (container) =>
     .filter((r) => r.className.split(/\s+/).includes("bb-row"))
     .map((row) => {
       const main = row.children.find((c) => c.className.includes("bb-row__main"));
+      const titleLink = main?.children
+        .find((c) => c.className.includes("bb-row__title"))
+        ?.children.find((c) => c.tagName === "a");
       return {
         title: main?.children.find((c) => c.className.includes("bb-row__title"))?.textContent ?? "",
+        link: titleLink ? { target: titleLink.target ?? "", rel: titleLink.rel ?? "" } : null,
         sub: main?.children.find((c) => c.className.includes("bb-row__sub"))?.textContent ?? "",
         titleTooltip: main?.children.find((c) => c.className.includes("bb-row__title"))?.title ?? "",
         subTooltip: main?.children.find((c) => c.className.includes("bb-row__sub"))?.title ?? "",

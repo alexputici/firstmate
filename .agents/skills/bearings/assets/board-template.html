@@ -703,7 +703,7 @@ __FM_BEARINGS_BOARD_DATA__
     var title = el("div", "bb-row__title");
     if (isIssue(t)) {
       var issueLink = el("a", "", t.id + " · " + t.title);
-      issueLink.href = t.issue_url;
+      issueLink.href = t.issue_url; issueLink.target = "_blank"; issueLink.rel = "noopener";
       title.appendChild(issueLink);
     } else title.textContent = t.title;
     title.title = title.textContent;
