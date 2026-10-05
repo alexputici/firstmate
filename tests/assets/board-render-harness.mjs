@@ -24,6 +24,7 @@ class Node {
     this.type = "";
     this.value = "";
     this.checked = false;
+    this.listeners = {};
     this.classList = {
       add: (c) => { this.className = (this.className + " " + c).trim(); },
       contains: (c) => this.className.split(/\s+/).includes(c),
@@ -37,7 +38,7 @@ class Node {
   set textContent(v) { this._text = String(v); this.children = []; }
   appendChild(n) { n.parentNode = this; this.children.push(n); return n; }
   setAttribute(k, v) { this.attributes[k] = v; }
-  addEventListener() {}
+  addEventListener(name, fn) { this.listeners[name] = fn; }
   querySelectorAll(sel) {
     const want = sel.replace(/^\./, "").replace(/:checked$/, "");
     const checkedOnly = sel.endsWith(":checked");
@@ -78,7 +79,8 @@ globalThis.document = {
     return byId.get(id);
   },
 };
-globalThis.window = {};
+const queuedPrompts = [];
+globalThis.window = { lavish: { queuePrompt: (text, options) => queuedPrompts.push({ text, ...options, element: undefined }) } };
 globalThis.TextEncoder = TextEncoder;
 
 const script = html.slice(html.indexOf("<script>") + "<script>".length, html.lastIndexOf("</script>"));
@@ -113,6 +115,13 @@ const underway = rowsOf(uw);
 
 const ch = byId.get("bb-charted") || new Node("div");
 const charted = rowsOf(ch);
+if (process.argv.includes("--pick-all")) {
+  for (const pick of ch.querySelectorAll(".bb-pick")) {
+    pick.checked = true;
+    pick.listeners.change?.();
+  }
+  byId.get("bb-dispatch-btn")?.listeners.click?.();
+}
 // A fail-closed render replaces the page body instead of the board sections, so
 // surface it rather than reporting an empty board as a successful render.
 const errorText = [...byId.entries()]
@@ -123,4 +132,4 @@ const empty = ch.children.filter((c) => c.className.includes("bb-empty")).map((c
 const more = ch.children.filter((c) => c.className.includes("bb-morechip")).map((c) => c.textContent);
 
 process.stdout.write(
-  JSON.stringify({ stats, underway, charted, empty, more, error: errorText }) + "\n");
+  JSON.stringify({ stats, underway, charted, empty, more, queuedPrompts, error: errorText }) + "\n");

@@ -3369,6 +3369,156 @@ test_bad_secondmate_homes_never_revive_parent_work
 test_oversized_secondmate_summary_stays_strict_unknown
 test_secondmate_and_child_bounds_are_disclosed
 test_parent_decision_is_untrusted_contradiction_only
+# Issue visibility fixtures contain only synthetic identities and isolated homes.
+issue_home() {
+  local home fb repo
+  home=$(make_home "$1")
+  fb=$(make_fakebin "$home")
+  printf '## In flight\n## Queued\n## Done\n' > "$home/data/backlog.md"
+  for repo in alpha beta; do
+    mkdir -p "$home/projects/$repo"
+    git -C "$home/projects/$repo" init -q
+    git -C "$home/projects/$repo" remote add origin "https://github.com/example-org/$repo.git"
+    printf -- '- %s [direct-PR] - Synthetic project (added 2026-01-01)\n' "$repo" >> "$home/data/projects.md"
+  done
+  cat > "$fb/gh-axi" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$NET_LOG"
+case "${ISSUE_FAILURE:-}" in auth|rate|permission) exit 1 ;; esac
+case "$*" in *'name:"alpha"'*) repo=example-org/alpha ;; *) repo=example-org/beta ;; esac
+body=$(jq -nc --arg repo "$repo" --arg failure "${ISSUE_FAILURE:-}" '
+  def conn($nodes): {nodes:$nodes,totalCount:($nodes|length),pageInfo:{hasNextPage:false}};
+  def issue($n): {number:$n,url:("https://github.com/"+$repo+"/issues/"+($n|tostring)),title:("Synthetic issue "+($n|tostring)),
+    state:"OPEN",updatedAt:"2026-01-02T00:00:00Z",parent:null,subIssuesSummary:{total:0,completed:0},
+    labels:conn([{name:"ready-to-build"}]),assignees:conn([]),timelineItems:conn([]),closedByPullRequestsReferences:conn([])};
+  [range(21;40)|issue(.)
+    | if .number>26 then .parent={url:("https://github.com/"+$repo+"/issues/21"),number:21,repository:{nameWithOwner:$repo}} else . end
+    | if .number==21 then .subIssuesSummary={total:13,completed:0}
+        | .timelineItems=conn([{source:{__typename:"PullRequest",url:("https://github.com/"+$repo+"/pull/81"),state:"MERGED",updatedAt:"2026-01-02T00:00:00Z"}}]) else . end
+    | if .number==22 then .assignees=conn([{login:"synthetic-owner"}]) else . end
+    | if .number==23 then .closedByPullRequestsReferences=conn([{url:("https://github.com/"+$repo+"/pull/82"),state:"OPEN",updatedAt:"2026-01-02T00:00:00Z"}]) else . end
+  ] as $issues
+  | {data:{repository:{nameWithOwner:$repo,issues:conn($issues)}}}
+  | if $failure=="truncated" then .data.repository.issues.pageInfo.hasNextPage=true else . end
+  | if $failure=="nested" then .data.repository.issues.nodes[0].closedByPullRequestsReferences.pageInfo.hasNextPage=true else . end
+  | if $failure=="partial" then .errors=[{message:"permission denied"}] else . end
+  | @base64')
+printf 'api_response:\n  body: %s\n  truncated: false\n' "${body//\"/}"
+STUB
+  chmod +x "$fb/gh-axi"
+  printf '%s\n' "$home"
+}
+
+issue_snapshot() {
+  PATH="$1/fakebin:$PATH" NET_LOG="$1/network.log" FM_HOME="$1" FM_ROOT_OVERRIDE="$ROOT" \
+    FM_STATE_OVERRIDE="$1/state" FM_DATA_OVERRIDE="$1/data" FM_CONFIG_OVERRIDE="$1/config" \
+    FM_PROJECTS_OVERRIDE="$1/projects" FM_BEARINGS_NOW=2026-01-03T00:00:00Z \
+    bash "$BEARINGS" --json --include-issues
+}
+
+test_issue_visibility_classes_grouping_and_repeatability() {
+  local home out again canonical
+  home=$(issue_home issue-classes)
+  cat > "$home/data/backlog.md" <<'EOF'
+## In flight
+- [ ] active-link - Active scope https://github.com/example-org/alpha/issues/24 (repo: alpha) (kind: ship) (since 2026-01-01)
+## Queued
+- [ ] parked-link - Parked scope https://github.com/example-org/alpha/issues/25 (repo: alpha) (kind: ship) (hold: Later) (hold-kind: captain) (hold-until: 2099-01-01)
+- [ ] body-link - Body citation (repo: alpha) (kind: ship)
+  https://github.com/example-org/alpha/issues/26
+## Done
+- [x] old-link - Old scope https://github.com/example-org/alpha/issues/22 (repo: alpha) (kind: ship) (done 2026-01-01)
+EOF
+  out=$(issue_snapshot "$home") || fail 'issue projection failed'
+  printf '%s' "$out" | jq -e '
+    .issue_visibility as $v | $v.complete and $v.known==2 and $v.checked==2
+    and ($v.rows|length)==38
+    and ($v.rows|map(select(.id=="example-org/alpha#21"))[0]
+      | .classification=="uncertain" and .children.uncertain==13 and .child_scope.total==13 and .referenced_prs[0].state=="MERGED")
+    and ($v.rows|map(select(.id=="example-org/alpha#22"))[0]
+      | .classification=="uncertain" and (.completed_tasks|length)==1 and (.assignees|length)==1)
+    and ($v.rows|map(select(.id=="example-org/alpha#23"))[0].classification)=="covered"
+    and ($v.rows|map(select(.id=="example-org/alpha#24"))[0].classification)=="covered"
+    and ($v.rows|map(select(.id=="example-org/alpha#25"))[0]
+      | .classification=="parked" and .tasks[0].hold_until=="2099-01-01")
+    and ($v.rows|map(select(.id=="example-org/alpha#26"))[0].classification)=="covered"
+    and ($v.rows|map(select(.id=="example-org/beta#24"))[0].classification)=="uncertain"
+    and (.decisions_open|all(.[];.id|startswith("example-org/")|not))
+  ' >/dev/null || fail "incorrect issue classification: $out"
+  again=$(issue_snapshot "$home") || fail 'fresh process issue retry failed'
+  [ "$out" = "$again" ] || fail 'repeat and fresh-process issue projections differ'
+  canonical=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
+    FM_CONFIG_OVERRIDE="$home/config" FM_PROJECTS_OVERRIDE="$home/projects" PATH="$home/fakebin:$PATH" \
+    NET_LOG="$home/network.log" bash "$ROOT/bin/fm-fleet-snapshot.sh" --secondmate-home-summary)
+  printf '%s' "$canonical" | jq -e '.issue_sources.tasks.records | any(.[];.id=="body-link" and .issue_urls==["https://github.com/example-org/alpha/issues/26"])' >/dev/null \
+    || fail 'home summary lost exact body citation'
+  pass 'issue coverage is exact, grouped, persistent across fresh runs, and preserves partial scope'
+}
+
+test_issue_visibility_incomplete_is_unmeasured() {
+  local home out failure
+  home=$(issue_home issue-errors)
+  for failure in auth rate permission truncated nested partial; do
+    out=$(ISSUE_FAILURE="$failure" issue_snapshot "$home") || fail "projection failed instead of disclosing $failure"
+    printf '%s' "$out" | jq -e '
+      .issue_visibility | .complete==false and .proven_clear==false
+      and all(.repos[]; .measured==false)
+      and all(.rows[];.classification=="unmeasured") and (.omitted|length)>0
+    ' >/dev/null || fail "incomplete issue read became clear: $failure: $out"
+  done
+  out=$(FM_BEARINGS_ISSUE_REPOS=1 issue_snapshot "$home") || fail 'repo cap failed'
+  printf '%s' "$out" | jq -e '.issue_visibility | .known==2 and .checked==1 and .complete==false' >/dev/null \
+    || fail 'repository cap did not disclose unmeasured repository'
+  out=$(FM_BEARINGS_ISSUE_ROWS=2 issue_snapshot "$home") || fail 'row cap failed'
+  printf '%s' "$out" | jq -e '.issue_visibility | .rows_omitted==36 and .complete==false and (.rows|length)==2' >/dev/null \
+    || fail 'row cap lost omitted count'
+  pass 'failed, partial, nested-truncated and capped reads never claim all-clear'
+}
+
+test_issue_visibility_secondmate_and_source_bounds() {
+  local home mate out sources
+  home=$(issue_home issue-parent)
+  mate=$(issue_home issue-mate)
+  mkdir -p "$mate/bin"
+  printf '# Synthetic home\n' > "$mate/AGENTS.md"
+  printf 'issue-mate\n' > "$mate/.fm-secondmate-home"
+  cat > "$mate/data/backlog.md" <<'EOF'
+## In flight
+## Queued
+- [ ] child-link - Scoped work (repo: alpha) (kind: ship)
+  https://github.com/example-org/alpha/issues/24
+## Done
+EOF
+  PATH="$mate/fakebin:$PATH" NET_LOG="$mate/network.log" FM_HOME="$mate" \
+    FM_STATE_OVERRIDE="$mate/state" FM_DATA_OVERRIDE="$mate/data" FM_CONFIG_OVERRIDE="$mate/config" \
+    FM_PROJECTS_OVERRIDE="$mate/projects" FM_SNAPSHOT_NOW=2026-01-03T00:00:00Z \
+    bash "$ROOT/bin/fm-fleet-snapshot.sh" --secondmate-home-summary > "$mate/state/home-summary.json" || fail 'summary production failed'
+  printf -- '- issue-mate - Synthetic scope (home: %s; scope: synthetic work; projects: alpha; added 2026-01-01)\n' "$mate" > "$home/data/secondmates.md"
+  out=$(issue_snapshot "$home") || fail 'local mate projection failed'
+  printf '%s' "$out" | jq -e '.issue_visibility | .complete and (.rows|any(.[];.id=="example-org/alpha#24" and .classification=="covered" and .tasks[0].owner=="issue-mate"))' >/dev/null \
+    || fail "secondmate issue ownership lost: $out"
+  make_remote_ledger_ssh "$home" >/dev/null
+  printf -- '- issue-mate - Synthetic scope (host: fixture-host; root: /fixture/root; home: %s; scope: synthetic work; projects: alpha; added 2026-01-01)\n' "$mate" > "$home/data/secondmates.md"
+  out=$(FM_SSH_BIN="$home/fakebin/fake-ssh" FM_TEST_LEDGER_CALL_LOG="$home/ledger.log" issue_snapshot "$home") || fail 'remote mate projection failed'
+  printf '%s' "$out" | jq -e '.issue_visibility | .complete and (.rows|any(.[];.id=="example-org/alpha#24" and .classification=="covered" and .tasks[0].owner=="issue-mate"))' >/dev/null \
+    || fail "remote secondmate issue ownership lost: $out"
+  sources=$(cat "$mate/state/home-summary.json")
+  printf '%s' "$sources" | jq 'del(.issue_sources)' > "$mate/state/home-summary.json"
+  out=$(FM_SSH_BIN="$home/fakebin/fake-ssh" FM_TEST_LEDGER_CALL_LOG="$home/ledger.log" issue_snapshot "$home") || fail 'legacy summary projection failed'
+  printf '%s' "$out" | jq -e '.issue_visibility | .complete==false and .proven_clear==false and .unmeasured_homes==1 and all(.rows[];.classification=="unmeasured")' >/dev/null \
+    || fail 'legacy home summary became uncovered or all-clear'
+  rm "$home/data/secondmates.md"
+  { printf '## Queued\n'; printf -- '- [ ] scope-a - One https://github.com/example-org/alpha/issues/24 (kind: ship)\n- [ ] scope-b - Two https://github.com/example-org/alpha/issues/25 (kind: ship)\n'; } > "$home/data/backlog.md"
+  out=$(FM_SNAPSHOT_ISSUE_TASKS=1 issue_snapshot "$home") || fail 'source bound projection failed'
+  printf '%s' "$out" | jq -e '.issue_visibility | .complete==false and .unmeasured_homes==1' >/dev/null || fail 'task source cap went undisclosed'
+  pass 'local and remote task URLs survive summaries; legacy summaries and source bounds are unmeasured'
+}
+
+test_issue_visibility_secondmate_and_source_bounds
+
+test_issue_visibility_classes_grouping_and_repeatability
+test_issue_visibility_incomplete_is_unmeasured
+
 test_parent_evidence_reconciles_by_verb_and_key
 test_nonprogressing_child_states_are_explicit
 test_registry_unavailability_and_bounds_are_explicit
